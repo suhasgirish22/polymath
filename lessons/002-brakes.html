@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 2: Brakes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+
+/* Day 2 extras */
+.bars { display: grid; gap: 6px; }
+.flow .pipe { stroke-dasharray: 6 8; animation: flow 1s linear infinite; }
+@keyframes flow { to { stroke-dashoffset: -28; } }
+.hot { color: var(--warn); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) {
+  .flow .pipe { animation: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 2 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>Where does your speed go when you brake?</h1>
+  <p class="lead">Today you will build a disc brake part by part, squeeze it, and see why it gets hot enough to make chai.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">You are driving at 60 km/h. A dog runs onto the road. You press the brake. In about 2 seconds, your 1,400 kg car stands still.</p>
+  <p class="say">The car had a lot of movement energy. Energy cannot just disappear. <b>So where did it go?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">It was pushed into the road</button>
+    <button type="button" data-a="1">It turned into heat</button>
+    <button type="button" data-a="0">It was stored in the brake fluid</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>A brake is a heat maker</h2>
+  <p>Rub your palms together fast for 5 seconds. They get warm. You turned movement into heat. That is called <b>friction</b>.</p>
+  <p>A brake does the same thing. It rubs a pad against a spinning metal disc. The car slows down. The disc gets hot.</p>
+  <p>How much heat? Movement energy = half &times; mass &times; speed &times; speed. At 100 km/h (27.8 m/s): 0.5 &times; 1,400 &times; 27.8 &times; 27.8 = about <b>540,000 joules</b>. That is enough to heat 1.7 litres of water from tap to boiling. One stop. Move the speed and see:</p>
+  <label for="spd1" class="ctrl">
+    <span><b>Your speed:</b> <span id="spd1Val" class="mono">100</span> km/h</span>
+    <input id="spd1" type="range" min="20" max="140" step="10" value="100">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Movement energy</div><div class="big"><span id="eKJ">540</span> kJ</div></div>
+    <div class="tile"><div class="small">Water you could boil</div><div class="big"><span id="eL">1.7</span> L</div></div>
+    <div class="tile"><div class="small">Front discs get hotter by</div><div class="big"><span id="eT">59</span> &deg;C</div></div>
+  </div>
+  <p id="eNote" class="note"></p>
+  <p class="small">Disc rise assumes the two front discs (7 kg of iron each) take 70% of the heat. The front does most of the work, because the car's weight tips forward when you brake.</p>
+</section>
+
+<!-- CHAPTER 2 -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>How a small push becomes a huge squeeze</h2>
+  <p>To stop fast, the pads must squeeze the disc with about the weight of a car. But your foot pushes maybe 20 kg. How?</p>
+  <p>Three tricks multiply your push, one after another:</p>
+  <ul class="plain">
+    <li><b>The pedal is a lever.</b> Long arm for your foot, short arm at the other end. It multiplies about 4 times.</li>
+    <li><b>The booster</b> is the big round drum behind the pedal. It uses engine suction to add about 4 times more.<br><span class="w hot">Without it: you would have to stand on the pedal.</span></li>
+    <li><b>The liquid.</b> A small piston pushes on brake fluid. The fluid pushes a big piston at the wheel. The push spreads over a bigger area, so the force grows.</li>
+  </ul>
+  <div class="fig flow">
+    <svg viewBox="0 0 360 170" role="img" aria-labelledby="hTitle">
+      <title id="hTitle">A small master piston connected by a fluid pipe to a big caliper piston at the wheel</title>
+      <text x="60" y="20" text-anchor="middle" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--muted)">AT THE PEDAL</text>
+      <text x="290" y="20" text-anchor="middle" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--muted)">AT THE WHEEL</text>
+      <rect x="20" y="70" width="90" height="22" rx="3" fill="var(--water)" opacity="0.35"/>
+      <rect id="mPist" x="20" y="70" width="18" height="22" fill="var(--steel)"/>
+      <path class="pipe" d="M110,81 L180,81 L180,120 L250,120" fill="none" stroke="var(--water)" stroke-width="8"/>
+      <rect x="250" y="70" width="80" height="80" rx="4" fill="var(--water)" opacity="0.35"/>
+      <rect id="cPist" x="300" y="70" width="30" height="80" fill="var(--steel)"/>
+      <text x="65" y="112" text-anchor="middle" font-family="var(--font-body)" font-size="11" fill="var(--muted)">small piston, 22 mm</text>
+      <text x="290" y="166" text-anchor="middle" font-family="var(--font-body)" font-size="11" fill="var(--muted)">big piston, 54 mm</text>
+      <text id="mTxt" x="65" y="58" text-anchor="middle" font-family="var(--font-mono)" font-size="13" font-weight="600" fill="var(--ink)">320 kg</text>
+      <text id="cTxt" x="290" y="58" text-anchor="middle" font-family="var(--font-mono)" font-size="13" font-weight="600" fill="var(--accent)">1,930 kg</text>
+    </svg>
+  </div>
+  <label for="foot" class="ctrl">
+    <span><b>Your foot pushes:</b> <span id="footVal" class="mono">20</span> kg</span>
+    <input id="foot" type="range" min="5" max="50" step="1" value="20">
+  </label>
+  <div class="row" id="boostBtns">
+    <button type="button" data-b="1" aria-pressed="true">Engine on (booster works)</button>
+    <button type="button" data-b="0">Engine off (no booster)</button>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Fluid pressure</div><div class="big"><span id="bar">82</span> bar</div></div>
+    <div class="tile"><div class="small">Squeeze on the disc</div><div class="big"><span id="clamp">1,930</span> kg</div></div>
+  </div>
+  <p id="hNote" class="status ok"></p>
+  <p>The numbers: the small piston has 3.8 cm&sup2; of area. The big one has 22.9 cm&sup2;. That is 6 times bigger, so the force is 6 times bigger. The same push reaches every wheel at once.</p>
+  <details>
+    <summary>Quick check: why must there be no air in brake pipes?</summary>
+    <p>Liquid cannot be squashed. Air can. With an air bubble, your push squashes the bubble first. The pedal feels soft and goes down too far. Mechanics call this a <b>spongy pedal</b>. It is dangerous.</p>
+  </details>
+</section>
+
+<!-- CHAPTER 3: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Build a disc brake, part by part</h2>
+  <p>Look through the spokes of an alloy wheel. You can see a shiny disc and a clamp on top. Let us build that.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn it. At the end, hold <b>Press the brake</b> and watch.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <div class="row">
+    <button type="button" id="brakeBtn" class="primary">Hold to press the brake</button>
+    <button type="button" id="playBtn" aria-pressed="true">Wheel spinning</button>
+  </div>
+  <label for="expl" class="ctrl">
+    <span class="small">Pull it apart: <span id="explVal" class="mono">0</span>%</span>
+    <input id="expl" type="range" min="0" max="100" step="5" value="0">
+  </label>
+  <p id="heatOut" class="note">Disc temperature: about 40 &deg;C</p>
+  <p class="small">This is a <b>floating caliper</b>, the type on most small cars. There is a piston on one side only. It pushes the inner pad. The whole clamp then slides and pulls the outer pad in too.</p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>Why stopping takes longer than you think</h2>
+  <p>Stopping has two parts. First your brain sees the danger and moves your foot. That takes about <b>1.5 seconds</b>. The car does not slow at all in that time.</p>
+  <p>Then the brakes work. Here is the surprise: braking distance grows with speed &times; speed. Go <b>2 times faster</b>, and you need <b>4 times</b> the road to stop.</p>
+  <p>Try it. Change speed, road and your attention:</p>
+  <label for="spd2" class="ctrl">
+    <span><b>Speed:</b> <span id="spd2Val" class="mono">60</span> km/h</span>
+    <input id="spd2" type="range" min="20" max="120" step="10" value="60">
+  </label>
+  <div class="row" id="roadBtns">
+    <button type="button" data-r="dry" aria-pressed="true">Dry road</button>
+    <button type="button" data-r="wet">Wet road</button>
+    <button type="button" data-r="worn">Wet + worn tyres</button>
+  </div>
+  <div class="row" id="eyeBtns">
+    <button type="button" data-e="1.5" aria-pressed="true">Watching the road</button>
+    <button type="button" data-e="2.5">Looking at phone</button>
+  </div>
+  <div class="fig">
+    <svg viewBox="0 0 360 120" role="img" aria-labelledby="sTitle">
+      <title id="sTitle">A bar showing thinking distance and braking distance for the chosen speed</title>
+      <rect x="10" y="30" width="340" height="30" rx="4" fill="var(--line)" opacity="0.5"/>
+      <rect id="thinkBar" x="10" y="30" width="60" height="30" fill="var(--steel)"/>
+      <rect id="brakeBar" x="70" y="30" width="60" height="30" fill="var(--accent)"/>
+      <line id="kidLine" x1="200" y1="20" x2="200" y2="70" stroke="var(--warn)" stroke-width="3"/>
+      <text id="kidTxt" x="200" y="14" text-anchor="middle" font-family="var(--font-body)" font-size="11" fill="var(--warn)">child 40 m ahead</text>
+      <text x="10" y="86" font-family="var(--font-body)" font-size="11" fill="var(--muted)">grey = thinking, yellow = braking</text>
+      <text x="350" y="86" text-anchor="end" font-family="var(--font-body)" font-size="11" fill="var(--muted)">bar = 250 m</text>
+      <text id="stopTxt" x="10" y="110" font-family="var(--font-display)" font-size="13" font-weight="600" fill="var(--ink)"></text>
+    </svg>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Thinking</div><div class="big"><span id="dThink">25</span> m</div></div>
+    <div class="tile"><div class="small">Braking</div><div class="big"><span id="dBrake">18</span> m</div></div>
+    <div class="tile"><div class="small">Total</div><div class="big"><span id="dTotal">43</span> m</div></div>
+  </div>
+  <p class="small">Braking distance = speed &times; speed &divide; (2 &times; grip &times; 9.81). Grip values are rough: dry 0.8, wet 0.55, wet with worn tyres 0.35. Remember Day 1: the tyre is what finally stops the car.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Why brakes fail on long ghat roads</h2>
+  <p>Think of the drive down a long ghat, like Khandala on the Mumbai to Pune road. You go down hundreds of metres. Gravity keeps adding speed. If only the brakes hold you back, all that energy becomes heat in the brakes.</p>
+  <p>Too much heat causes <b>brake fade</b>. Two things go wrong:</p>
+  <ul class="plain">
+    <li><b>Hot pads</b> grip less. You press the same, but the car slows less.</li>
+    <li><b>The fluid can boil.</b> Brake fluid slowly soaks up water from the air. Old fluid boils at a lower temperature. Boiling makes gas bubbles, and you get the spongy pedal from Chapter 2.</li>
+  </ul>
+  <p>The fix: use a <b>low gear</b>. The engine then resists the wheels and takes part of the work. This is <b>engine braking</b>. Pick a hill and a gear:</p>
+  <label for="hill" class="ctrl">
+    <span><b>Height of the hill:</b> <span id="hillVal" class="mono">500</span> m</span>
+    <input id="hill" type="range" min="100" max="1500" step="50" value="500">
+  </label>
+  <div class="row" id="gearBtns">
+    <button type="button" data-g="0.9" aria-pressed="true">Neutral</button>
+    <button type="button" data-g="0.6">3rd gear</button>
+    <button type="button" data-g="0.35">2nd gear</button>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Energy from the hill</div><div class="big"><span id="hMJ">6.9</span> MJ</div></div>
+    <div class="tile"><div class="small">Same as hard stops from 100 km/h</div><div class="big"><span id="hStops">11</span></div></div>
+  </div>
+  <p id="gNote" class="status bad"></p>
+  <p class="small">Hill energy = mass &times; 9.81 &times; height. How much the gear takes is a rough idea. It depends on the car and speed.</p>
+  <p class="note"><b>Simple rule:</b> go down a hill in the same gear you would use to climb it. Use short, firm presses. Do not ride the brake lightly all the way down.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"In an emergency, pump the brake pedal again and again."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False for modern cars. Every new car in India has ABS. Press hard and keep pressing. ABS does the pumping for you, many times a second. You will learn how on Day 7.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Brakes squeaking on a rainy morning means they are failing."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">Usually false. A thin layer of rust forms on the disc overnight. The first few stops wipe it off. But a high squeal every time you brake can be the wear warning tab on a thin pad.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Going downhill in neutral saves fuel."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False for modern cars. In gear with your foot off the pedal, the engine computer cuts fuel to almost zero. In neutral, the engine burns fuel to idle. And your brakes get much hotter.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/OjrY7G8o99U" title="How Disc Brakes Work - Fixed vs Floating, by Engineering Explained" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=OjrY7G8o99U" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>How Disc Brakes Work: Fixed vs Floating</b><br><span style="color:#C3CAD1;font-size:.9rem">Engineering Explained, on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 3. When he shows the floating caliper, pause. Say in your own words why one piston is enough.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four checks on your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Booster test. Engine off, press the brake 5 times. It goes hard. Now hold it and start the engine. The pedal sinks a little. That means the booster works.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Open the bonnet. Find the brake fluid bottle. The level should be between MIN and MAX. Light yellow is fresh. Dark brown is old.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>Look in your service book. When was the brake fluid last changed? Many makers say every 2 years.</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>On your next downhill or flyover ramp, try a lower gear. Feel how the engine holds the car back.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. When you brake, where does the car's movement energy go?</summary><p>It turns into heat, mostly in the discs and pads. Then the heat slowly goes into the air.</p></details>
+  <details><summary>2. Name the three things that multiply your foot's push.</summary><p>The pedal lever (about 4 times), the booster (about 4 times more), and the fluid pushing a small piston into a bigger one (about 6 times more).</p></details>
+  <details><summary>3. You double your speed. What happens to braking distance?</summary><p>It becomes 4 times longer, because it grows with speed times speed.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 1, Tyres):</b></p>
+  <details><summary>4. At 33 psi, how big is the patch of tyre touching the road?</summary><p>About 150 cm&sup2;, the size of a postcard. 350 kg per wheel &divide; 2.3 kg per cm&sup2;.</p></details>
+  <details><summary>5. Why does a worn tyre make wet braking so much longer?</summary><p>Shallow grooves cannot drain water. Less rubber touches the road, so grip drops. You saw it in Chapter 4: wet with worn tyres needs over twice the dry distance.</p></details>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: where the energy goes, how your small push becomes big, and why low gear helps on hills.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. A brake turns..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Physics:</b> energy is never lost, only changed. Brakes change movement into heat. This rule shows up in every lesson about machines.</li>
+    <li><b>Same trick, other places:</b> the jack at the tyre shop that lifts your car uses the same small piston and big piston idea.</li>
+    <li><b>Day 6, EVs:</b> an electric car brakes partly with its motor. It turns movement back into battery charge instead of heat.</li>
+    <li><b>Tomorrow, suspension and steering:</b> brakes only work while the tyre is pressed on the road. Over a bump, suspension keeps it there.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Brake fluid: lowest allowed boiling point</caption>
+        <thead><tr><th>Type</th><th>New (dry)</th><th>Old (wet, with water)</th></tr></thead>
+        <tbody>
+          <tr><td>DOT 3</td><td class="mono">205 &deg;C</td><td class="mono">140 &deg;C</td></tr>
+          <tr><td>DOT 4</td><td class="mono">230 &deg;C</td><td class="mono">155 &deg;C</td></tr>
+          <tr><td>DOT 5.1</td><td class="mono">260 &deg;C</td><td class="mono">180 &deg;C</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>Disc brake:</b> pads squeeze a disc. Cools well, works well when wet. Front of almost all cars.</li>
+      <li><b>Drum brake:</b> curved shoes push outward inside a metal drum. Cheaper, and holds the handbrake easily. Rear of many Indian hatchbacks.</li>
+      <li><b>Pads:</b> about 10 to 12 mm thick when new. Replace near 3 mm. Many pads have a metal tab that squeals when thin.</li>
+      <li><b>Discs:</b> wear too. The minimum thickness is stamped on the disc (look for "MIN TH").</li>
+      <li><b>Brake fluid soaks up water</b> from the air. That is why it must be changed, often every 2 years. Check your car's manual.</li>
+      <li><b>Safe gap:</b> keep at least 3 seconds behind the car in front. Double it in rain.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="001-tyres.html">&larr; Day 1: Tyres</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 3, Suspension and steering (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  function pressGroup(sel, cb) {
+    var bs = document.querySelectorAll(sel + ' button');
+    bs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        bs.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        cb(b);
+      });
+    });
+  }
+  function pressedVal(sel, attr) { var b = document.querySelector(sel + ' button[aria-pressed="true"]'); return b.getAttribute(attr); }
+
+  // Progress bar
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = document.getElementById('guessOut');
+  pressGroup('#guess', function (b) {
+    var ok = b.getAttribute('data-a') === '1';
+    guessOut.hidden = false;
+    guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+      'It turned into <b>heat</b>. The brake discs can get hotter than a pan on the stove. Chapter 1 shows how much.';
+  });
+
+  // Chapter 1: energy -> heat
+  var MASS = 1400, spd1 = document.getElementById('spd1');
+  function updEnergy() {
+    var kmh = +spd1.value, v = kmh / 3.6, E = 0.5 * MASS * v * v;
+    document.getElementById('spd1Val').textContent = kmh;
+    document.getElementById('eKJ').textContent = fmt(E / 1000);
+    document.getElementById('eL').textContent = (E / (4186 * 75)).toFixed(1);
+    var rise = 0.7 * E / (2 * 7 * 460);
+    document.getElementById('eT').textContent = Math.round(rise);
+    var ratio = (kmh / 50) * (kmh / 50);
+    document.getElementById('eNote').textContent = kmh === 50 ? 'This is our base: a normal city speed.' :
+      'Compared with 50 km/h, this is ' + ratio.toFixed(1) + ' times the heat. Speed counts twice: double the speed, four times the heat.';
+  }
+  spd1.addEventListener('input', updEnergy); updEnergy();
+
+  // Chapter 2: hydraulics. lever 4x, booster 4x, area ratio 22.9 / 3.8
+  var foot = document.getElementById('foot'), A_M = 3.8, A_C = 22.9;
+  function updHyd() {
+    var f = +foot.value, boost = pressedVal('#boostBtns', 'data-b') === '1' ? 4 : 1;
+    var onMaster = f * 4 * boost, p = onMaster / A_M, clamp = p * A_C;
+    document.getElementById('footVal').textContent = f;
+    document.getElementById('bar').textContent = Math.round(p * 0.981);
+    document.getElementById('clamp').textContent = fmt(clamp);
+    document.getElementById('mTxt').textContent = fmt(onMaster) + ' kg';
+    document.getElementById('cTxt').textContent = fmt(clamp) + ' kg';
+    var push = Math.min(1, clamp / 3000);
+    document.getElementById('mPist').setAttribute('x', (20 + push * 40).toFixed(1));
+    document.getElementById('cPist').setAttribute('x', (300 + push * 18).toFixed(1));
+    var st = document.getElementById('hNote');
+    if (clamp >= 1400) { st.className = 'status ok'; st.textContent = 'Strong squeeze. About a whole car\'s weight on each disc. This can stop you hard.'; }
+    else if (boost === 1) { st.className = 'status bad'; st.textContent = 'No booster. Same foot, only a quarter of the squeeze. This is why the pedal feels like stone when the engine is off.'; }
+    else { st.className = 'status ok'; st.textContent = 'A gentle squeeze. Fine for slowing down in traffic.'; }
+  }
+  foot.addEventListener('input', updHyd); pressGroup('#boostBtns', updHyd); updHyd();
+
+  // ---------- 3D disc brake ----------
+  var STEPS = [
+    { key: 'hub', t: 'The hub', d: 'The hub spins with the wheel. Your wheel bolts onto these studs.', w: '' },
+    { key: 'disc', t: 'Disc (rotor): the part that gets squeezed', d: 'An iron disc bolted to the hub, so it spins with the wheel. It has air gaps inside, like a sandwich with fins. Air flows through and cools it.', w: 'Without it: there is nothing to grab, so nothing can slow the wheel.' },
+    { key: 'pad', t: 'Brake pads: the rubbing part', d: 'Two pads, one on each side of the disc. They have a steel back and a thick friction layer. The friction layer slowly wears away.', w: 'Without them: steel would grind on iron. Little grip, lots of damage.' },
+    { key: 'piston', t: 'Piston: the pusher', d: 'A round metal plug, 54 mm wide. Fluid pushes it out, and it pushes the inner pad onto the disc.', w: 'Without it: the fluid push has nothing to move.' },
+    { key: 'fluid', t: 'Brake fluid: carries your push', d: 'A special oil fills the space behind the piston and the pipes all the way to your pedal. It cannot be squashed, so your push arrives instantly.', w: 'Without it: your foot is not connected to the wheel at all.' },
+    { key: 'caliper', t: 'Caliper: the clamp', d: 'The C-shaped body that wraps over the edge of the disc. It holds the piston on one side and the outer pad on the other.', w: 'Without it: the piston would just push the disc sideways. Nothing would squeeze from the other side.' },
+    { key: 'hose', t: 'Brake hose: the flexible pipe', d: 'A strong rubber pipe brings fluid to the caliper. It must bend, because the wheel moves up and down and turns.', w: 'Without it: a stiff metal pipe would crack as the wheel moves.' }
+  ];
+  var N = STEPS.length;
+  var INFO = {
+    hub: 'Hub: spins with the wheel. The wheel bolts on here.',
+    disc: 'Disc: iron disc that spins with the wheel. Pads squeeze it.',
+    pad: 'Brake pad: rubs on the disc and turns speed into heat.',
+    piston: 'Piston: pushed by fluid, it pushes the inner pad.',
+    fluid: 'Brake fluid: carries your foot\'s push to the wheel.',
+    caliper: 'Caliper: the clamp that holds pads and piston.',
+    hose: 'Brake hose: flexible pipe that brings the fluid.'
+  };
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = document.getElementById('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = document.getElementById('cap');
+  var selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Now hold "Press the brake". Watch the pads clamp, the wheel slow, and the disc glow.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (el, idx) { el.classList.toggle('on', idx < step); });
+    document.getElementById('prevBtn').disabled = step <= 1;
+    document.getElementById('nextBtn').disabled = step >= N;
+  }
+
+  function init3D() {
+    var stage = document.getElementById('stage');
+    var renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+    camera.position.set(6.6, 2.0, 3.0); camera.lookAt(0, 0.55, 0);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(6, 8, 5); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-6, -2, 4); scene.add(fill);
+
+    var pivot = new THREE.Group(); scene.add(pivot);
+    var baseY = 0.15; pivot.rotation.y = baseY;
+
+    // 1 unit = 100 mm. Axle along X; outboard (wheel side) is +X.
+    var MATS = {}, PARTS = {};
+    function mat(k, col, real, metal, rough, alpha) {
+      var m = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough, side: THREE.DoubleSide, transparent: alpha < 1, opacity: alpha, depthWrite: alpha >= 1 });
+      m.userData = { col: col, real: real, alpha: alpha, key: k };
+      (MATS[k] = MATS[k] || []).push(m); return m;
+    }
+    function tag(mesh, k) { mesh.userData.key = k; return mesh; }
+    function part(k) { var g = new THREE.Group(); g.userData.key = k; pivot.add(g); PARTS[k] = g; return g; }
+
+    // Spinning assembly: lathe parts in a group whose local Y is world X
+    var wheelSide = new THREE.Group(); wheelSide.rotation.z = -Math.PI / 2; pivot.add(wheelSide);
+    var spin = new THREE.Group(); wheelSide.add(spin);
+    function lathe(pts, m) {
+      var v = pts.map(function (p) { return new THREE.Vector2(p[0], p[1]); }); v.push(v[0].clone());
+      return new THREE.Mesh(new THREE.LatheGeometry(v, 72), m);
+    }
+    function rect(r0, r1, a0, a1) { return [[r0, a0], [r1, a0], [r1, a1], [r0, a1]]; }
+
+    var hubG = new THREE.Group(); hubG.userData.key = 'hub'; spin.add(hubG); PARTS.hub = hubG;
+    var mHub = mat('hub', 0xb8c0c9, 0x8a9099, 0.3, 0.45, 1);
+    hubG.add(tag(lathe(rect(0.001, 0.55, -0.7, 0.3), mHub), 'hub'));
+    for (var s = 0; s < 4; s++) {
+      var a = s / 4 * Math.PI * 2 + 0.4;
+      var stud = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.45, 12), mHub);
+      stud.position.set(Math.cos(a) * 0.48, 0.55, Math.sin(a) * 0.48); hubG.add(tag(stud, 'hub'));
+    }
+
+    var discG = new THREE.Group(); discG.userData.key = 'disc'; spin.add(discG); PARTS.disc = discG;
+    var mDisc = mat('disc', 0x9fb0c2, 0x6f7378, 0.2, 0.55, 1);
+    discG.add(tag(lathe(rect(0.80, 1.30, 0.04, 0.11), mDisc), 'disc'));
+    discG.add(tag(lathe(rect(0.80, 1.30, -0.11, -0.04), mDisc), 'disc'));
+    discG.add(tag(lathe(rect(0.74, 0.80, -0.11, 0.36), mDisc), 'disc'));
+    discG.add(tag(lathe(rect(0.56, 0.80, 0.30, 0.36), mDisc), 'disc'));
+    for (var vn = 0; vn < 36; vn++) {
+      var va = vn / 36 * Math.PI * 2;
+      var vane = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.08, 0.035), mDisc);
+      vane.position.set(Math.cos(va) * 1.05, 0, Math.sin(va) * 1.05); vane.rotation.y = -va;
+      discG.add(tag(vane, 'disc'));
+    }
+    // a mark so you can see it spin
+    var dot = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.012, 0.05), mat('disc', 0x1c1f23, 0x3a3d40, 0, 0.9, 1));
+    dot.position.set(1.12, 0.116, 0); discG.add(tag(dot, 'disc'));
+
+    // Static parts. Sector in the disc plane (YZ), centred at the top (+Y), extruded along X.
+    var HALF = 0.45;
+    function sector(r0, r1, half, x0, x1, m, k) {
+      var sh = new THREE.Shape(), c = Math.PI / 2;
+      sh.absarc(0, 0, r1, c - half, c + half, false);
+      sh.absarc(0, 0, r0, c + half, c - half, true);
+      var g = new THREE.ExtrudeGeometry(sh, { depth: x1 - x0, bevelEnabled: false, curveSegments: 24 });
+      g.rotateY(Math.PI / 2); g.translate(x0, 0, 0);
+      return tag(new THREE.Mesh(g, m), k);
+    }
+    var mFric = mat('pad', 0xe3a53a, 0x3a3530, 0, 0.95, 1), mBack = mat('pad', 0x8a6224, 0x50555b, 0.3, 0.5, 1);
+    var padOut = new THREE.Group(); padOut.add(sector(0.86, 1.26, HALF, 0.16, 0.26, mFric, 'pad')); padOut.add(sector(0.84, 1.28, HALF + 0.03, 0.26, 0.29, mBack, 'pad'));
+    var padIn = new THREE.Group(); padIn.add(sector(0.86, 1.26, HALF, -0.26, -0.16, mFric, 'pad')); padIn.add(sector(0.84, 1.28, HALF + 0.03, -0.29, -0.26, mBack, 'pad'));
+    var padG = part('pad'); padG.add(padOut); padG.add(padIn);
+
+    var pistG = part('piston');
+    var pist = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 0.22, 32), mat('piston', 0xf2f4f6, 0xc9ced3, 0.4, 0.3, 1));
+    pist.rotation.z = Math.PI / 2; pist.position.set(-0.40, 1.06, 0); pistG.add(tag(pist, 'piston'));
+
+    var fluidG = part('fluid');
+    var fluid = new THREE.Mesh(new THREE.CylinderGeometry(0.27, 0.27, 1, 32), mat('fluid', 0x3f8fc0, 0xd8b45a, 0, 0.6, 0.85));
+    fluid.rotation.z = Math.PI / 2; fluidG.add(tag(fluid, 'fluid'));
+
+    var calG = part('caliper');
+    var mCal = mat('caliper', 0xc0503a, 0x2f3338, 0.3, 0.6, 0.5);
+    calG.add(sector(0.80, 1.34, 0.56, -0.67, -0.29, mCal, 'caliper'));
+    calG.add(sector(0.86, 1.34, 0.50, 0.29, 0.43, mCal, 'caliper'));
+    calG.add(sector(1.34, 1.52, 0.50, -0.67, 0.43, mCal, 'caliper'));
+
+    var hoseG = part('hose');
+    var curve = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.67, 1.2, 0), new THREE.Vector3(-1.0, 1.35, -0.1), new THREE.Vector3(-1.4, 1.9, -0.5), new THREE.Vector3(-1.6, 2.4, -0.9)]);
+    hoseG.add(tag(new THREE.Mesh(new THREE.TubeGeometry(curve, 30, 0.055, 10, false), mat('hose', 0x7a4fa0, 0x15171a, 0, 0.8, 1)), 'hose'));
+    calG.add(hoseG); // the hose moves with the caliper
+
+    var ORDER = ['hub', 'disc', 'pad', 'piston', 'fluid', 'caliper', 'hose'];
+    var real = false, clampK = 0, explode = 0;
+    function place() {
+      var g = 0.05 * (1 - clampK), body = -0.05 * clampK, e = explode;
+      padOut.position.set(body + 0.55 * e, 0.0, 0);
+      padIn.position.set(0.05 * clampK - 0.55 * e, 0, 0);
+      pist.position.x = -0.40 + 0.05 * clampK - 0.95 * e;
+      calG.position.set(body, 1.1 * e, 0);
+      var back = -0.61 + body - 1.05 * e, front = -0.51 + 0.05 * clampK - 0.95 * e;
+      fluid.scale.set(1, Math.max(0.02, front - back), 1); fluid.position.set((back + front) / 2, 1.06, 0);
+    }
+    function applyStep() {
+      ORDER.forEach(function (k, idx) { PARTS[k].visible = idx < step; });
+      selected = null; clearGlow(); showCaption();
+    }
+    function setColours() {
+      Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) {
+        m.color.setHex(real ? m.userData.real : m.userData.col);
+        var a = k === 'caliper' ? (real ? 1 : 0.5) : m.userData.alpha;
+        m.opacity = a; m.transparent = a < 1; m.depthWrite = a >= 1; m.needsUpdate = true;
+      }); });
+    }
+    function clearGlow() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { if (k !== 'disc') m.emissive.setHex(0); }); }); }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(460, Math.max(280, w * 0.85)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      camera.fov = w / h < 1.1 ? 42 : 36; camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', size); size();
+
+    var el = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    el.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === el) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleChain(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = el.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(pivot.children, true).filter(function (h) { return visibleChain(h.object) && h.object.userData.key; });
+      var solid = hits.filter(function (h) { return h.object.userData.key !== 'caliper'; });
+      var inner = solid.filter(function (h) { return ['piston', 'fluid', 'pad'].indexOf(h.object.userData.key) >= 0; })[0];
+      var hit = hits[0] && hits[0].object.userData.key === 'caliper' && inner && !real ? inner : hits[0];
+      clearGlow();
+      if (!hit) { selected = null; showCaption(); return; }
+      selected = hit.object.userData.key;
+      if (selected !== 'disc') MATS[selected].forEach(function (m) { m.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(); } });
+    document.getElementById('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(); } });
+    var realBtn = document.getElementById('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var expl = document.getElementById('expl');
+    expl.addEventListener('input', function () { document.getElementById('explVal').textContent = expl.value; explode = +expl.value / 100; place(); });
+
+    // Braking: hold the button (pointer or keyboard)
+    var braking = false, playing = !reduced, omega = playing ? 3 : 0, heat = 0;
+    var bBtn = document.getElementById('brakeBtn'), pBtn = document.getElementById('playBtn');
+    function bOn(e) { if (e) e.preventDefault(); braking = true; bBtn.setAttribute('aria-pressed', 'true'); if (step < N) { step = N; applyStep(); } }
+    function bOff() { braking = false; bBtn.setAttribute('aria-pressed', 'false'); }
+    bBtn.addEventListener('pointerdown', bOn); bBtn.addEventListener('pointerup', bOff); bBtn.addEventListener('pointerleave', bOff); bBtn.addEventListener('pointercancel', bOff);
+    bBtn.addEventListener('keydown', function (e) { if (e.key === ' ' || e.key === 'Enter') bOn(e); });
+    bBtn.addEventListener('keyup', bOff);
+    bBtn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+    pBtn.setAttribute('aria-pressed', playing ? 'true' : 'false'); pBtn.textContent = playing ? 'Wheel spinning' : 'Wheel stopped';
+    pBtn.addEventListener('click', function () { playing = !playing; pBtn.setAttribute('aria-pressed', playing ? 'true' : 'false'); pBtn.textContent = playing ? 'Wheel spinning' : 'Wheel stopped'; });
+    var heatOut = document.getElementById('heatOut'), lastShown = -1;
+
+    var visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    var last = performance.now();
+    function loop(t) {
+      requestAnimationFrame(loop);
+      var dt = Math.min(0.05, (t - last) / 1000); last = t;
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.25;
+      var target = braking ? 1 : 0;
+      clampK += (target - clampK) * Math.min(1, dt * (reduced ? 30 : 14));
+      if (braking) {
+        var dec = 4.5 * dt; heat += omega * omega * 70 * dt; omega = Math.max(0, omega - dec);
+      } else if (playing && omega < 3) omega = Math.min(3, omega + 1.2 * dt);
+      else if (!playing) omega = Math.max(0, omega - 3 * dt);
+      heat = Math.max(0, heat - heat * 0.04 * dt);
+      spin.rotation.y += omega * dt;
+      var temp = 40 + heat, glow = Math.max(0, Math.min(1, (temp - 120) / 480));
+      MATS.disc.forEach(function (m, idx) { if (idx === 0) m.emissive.setRGB(0.9 * glow, 0.18 * glow, 0); });
+      var shown = Math.round(temp / 10) * 10;
+      if (shown !== lastShown) {
+        lastShown = shown;
+        heatOut.innerHTML = 'Disc temperature: about ' + shown + ' &deg;C' + (temp > 350 ? '. <span class="hot">Very hot. Real discs can glow like this on race tracks and long ghats.</span>' : (temp > 150 ? '. Hotter than boiling water.' : ''));
+      }
+      place();
+      renderer.render(scene, camera);
+    }
+    setColours(); place(); applyStep();
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    var stage = document.getElementById('stage');
+    stage.innerHTML = '<div class="fail">The 3D brake could not load on this device. Use the steps below: each one describes the next part.</div>';
+    ['expl', 'realBtn', 'brakeBtn', 'playBtn'].forEach(function (id) { document.getElementById(id).disabled = true; });
+    document.getElementById('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    document.getElementById('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // Chapter 4: stopping distance
+  var MU = { dry: 0.8, wet: 0.55, worn: 0.35 }, spd2 = document.getElementById('spd2');
+  function updStop() {
+    var kmh = +spd2.value, v = kmh / 3.6, mu = MU[pressedVal('#roadBtns', 'data-r')], tr = +pressedVal('#eyeBtns', 'data-e');
+    var dT = v * tr, dB = v * v / (2 * mu * 9.81), tot = dT + dB, SC = 340 / 250;
+    document.getElementById('spd2Val').textContent = kmh;
+    document.getElementById('dThink').textContent = Math.round(dT);
+    document.getElementById('dBrake').textContent = Math.round(dB);
+    document.getElementById('dTotal').textContent = Math.round(tot);
+    var tw = Math.min(340, dT * SC), bw = Math.max(0, Math.min(340 - tw, dB * SC));
+    document.getElementById('thinkBar').setAttribute('width', tw.toFixed(1));
+    var bb = document.getElementById('brakeBar'); bb.setAttribute('x', (10 + tw).toFixed(1)); bb.setAttribute('width', bw.toFixed(1));
+    var kx = 10 + 40 * SC; document.getElementById('kidLine').setAttribute('x1', kx); document.getElementById('kidLine').setAttribute('x2', kx); document.getElementById('kidTxt').setAttribute('x', kx);
+    var st = document.getElementById('stopTxt');
+    if (tot <= 40) { st.textContent = 'You stop ' + Math.round(40 - tot) + ' m before the child.'; st.setAttribute('fill', 'var(--good)'); }
+    else {
+      var vHit = dT >= 40 ? kmh : Math.sqrt(Math.max(0, v * v - 2 * mu * 9.81 * (40 - dT))) * 3.6;
+      st.textContent = 'You reach the child still doing ' + Math.round(vHit) + ' km/h.'; st.setAttribute('fill', 'var(--warn)');
+    }
+  }
+  spd2.addEventListener('input', updStop); pressGroup('#roadBtns', updStop); pressGroup('#eyeBtns', updStop); updStop();
+
+  // Chapter 5: hills
+  var hill = document.getElementById('hill');
+  function updHill() {
+    var h = +hill.value, share = +pressedVal('#gearBtns', 'data-g');
+    var E = MASS * 9.81 * h, stopE = 0.5 * MASS * (100 / 3.6) * (100 / 3.6);
+    document.getElementById('hillVal').textContent = h;
+    document.getElementById('hMJ').textContent = (E / 1e6).toFixed(1);
+    var n = E * share / stopE;
+    document.getElementById('hStops').textContent = Math.round(n);
+    var st = document.getElementById('gNote');
+    var words = share > 0.8 ? 'In neutral, the brakes take almost all of it.' : (share > 0.5 ? 'In 3rd gear, the engine takes a good part.' : 'In 2nd gear, the engine takes most of it.');
+    st.className = n > 8 ? 'status bad' : 'status ok';
+    st.textContent = words + ' Your brakes must handle about ' + Math.round(n) + ' hard stops from 100 km/h' + (n > 8 ? ', with little time to cool. Fade risk.' : '. They can cool between presses.');
+  }
+  hill.addEventListener('input', updHill); pressGroup('#gearBtns', updHill); updHill();
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tagEl = ans.querySelector('.mark') || document.createElement('span');
+        tagEl.className = 'mark ' + (ok ? 'right' : 'wrong'); tagEl.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tagEl, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl2-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl2-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = document.getElementById('explainBox');
+  box.value = store.get('dl2-explain') || '';
+  box.addEventListener('input', function () { store.set('dl2-explain', box.value); });
+})();
+</script>
+</body>
+</html>
