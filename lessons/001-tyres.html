@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 1: Tyres</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+/* Rolling tyre and water */
+.spin { transform-box: fill-box; transform-origin: center; animation: spin 2.2s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.dash { animation: road 0.9s linear infinite; }
+@keyframes road { to { stroke-dashoffset: -40; } }
+.drop { animation: spray 1.1s linear infinite; }
+@keyframes spray { 0% { transform: translate(0,0); opacity: 1; } 100% { transform: translate(110px,-34px); opacity: 0; } }
+.aqua .wedge { opacity: 0; transition: opacity .4s; }
+.aqua .lift { transition: transform .5s; }
+.aqua.worn .wedge { opacity: 1; }
+.aqua.worn .lift { transform: translateY(-8px); }
+.aqua.worn .drop { display: none; }
+.aqua .grooves { transition: opacity .4s; }
+.aqua.worn .grooves { opacity: 0; }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+#tyreDot { transition: cx .5s, cy .5s; }
+
+.code { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.code button { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; padding: 6px 10px; background: var(--rubber); color: #E9ECEF; border-color: var(--rubber); }
+.code button[aria-pressed="true"] { background: var(--accent); color: #1C1F23; border-color: var(--accent); }
+.explain { background: var(--bg); border-radius: 10px; padding: 14px; min-height: 5.5em; }
+input[type="text"] { font-family: var(--font-mono); font-size: 1.2rem; width: 7ch; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+@media (prefers-reduced-motion: reduce) {
+  .spin, .dash, .drop { animation: none; }
+  .aqua .lift, .aqua .wedge, #tyreDot { transition: none; }
+}
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 1 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>How does air hold up a car?</h1>
+  <p class="lead">Today you will open up a tyre, build one layer by layer, and learn to read the one on your own car.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">Your car weighs about 1,400 kg. The air in each tyre is at about 33 psi. That is only about twice the pressure inside a cooker when it whistles.</p>
+  <p class="say"><b>So how can soft air hold up a whole car?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">The rubber is very hard</button>
+    <button type="button" data-a="0">Steel wires inside hold it up</button>
+    <button type="button" data-a="1">The air does it</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>The tyre squashes until it balances</h2>
+  <p>The air pushes on every bit of the tyre from inside. At 33 psi, it pushes about <b>2.3 kg on every square centimetre</b>.</p>
+  <p>The car pushes down. The bottom of the tyre goes flat. It keeps going flatter until the flat part is big enough to hold the weight.</p>
+  <p>One wheel carries about 350 kg. 350 &divide; 2.3 = about <b>150 cm&sup2;</b>. That is about the size of a postcard. Your whole car stands on four postcards of rubber.</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 200" role="img" aria-labelledby="pTitle">
+      <title id="pTitle">Side view and bottom view of the tyre's flat contact patch at the chosen pressure</title>
+      <text x="90" y="18" text-anchor="middle" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--muted)">SIDE VIEW</text>
+      <defs><clipPath id="sideClip"><rect id="sideClipRect" x="0" y="0" width="200" height="150"/></clipPath></defs>
+      <g clip-path="url(#sideClip)">
+        <circle cx="90" cy="96" r="62" fill="var(--rubber)"/>
+        <circle cx="90" cy="96" r="34" fill="var(--steel)"/>
+      </g>
+      <line id="sideRoad" x1="10" y1="150" x2="170" y2="150" stroke="var(--muted)" stroke-width="2"/>
+      <rect id="sideFlat" x="70" y="147" width="40" height="4" fill="var(--accent)"/>
+      <text x="270" y="18" text-anchor="middle" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--muted)">FLAT PART, FROM BELOW</text>
+      <defs>
+        <linearGradient id="patchGrad" x1="0" x2="1" y1="0" y2="0">
+          <stop id="g0" offset="0" stop-color="var(--accent)"/>
+          <stop id="g1" offset="0.5" stop-color="var(--accent)"/>
+          <stop id="g2" offset="1" stop-color="var(--accent)"/>
+        </linearGradient>
+      </defs>
+      <rect id="patch" x="230" y="60" width="80" height="100" rx="14" fill="url(#patchGrad)"/>
+      <text x="270" y="190" text-anchor="middle" font-family="var(--font-body)" font-size="11" fill="var(--muted)">red = this part wears fastest</text>
+    </svg>
+  </div>
+  <label for="psi" class="ctrl">
+    <span><b>Let air out, or pump it in:</b> <span id="psiVal" class="mono">33</span> psi</span>
+    <input id="psi" type="range" min="20" max="44" step="1" value="33">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Flat patch size</div><div class="big"><span id="area">151</span> cm&sup2;</div></div>
+    <div class="tile"><div class="small">Push per cm&sup2;</div><div class="big"><span id="kgcm">2.3</span> kg</div></div>
+  </div>
+  <div id="pStatus" class="status ok"></div>
+  <details>
+    <summary>Quick check: your tyre looks flat at the bottom. What happened?</summary>
+    <p>It has less air. Less push per cm&sup2; means the tyre must squash more to hold the same weight. A squashed tyre bends more, gets hot and wears at the edges.</p>
+  </details>
+  <p class="small">Your car's correct pressure is on a sticker inside the driver door frame. Not on the tyre.</p>
+</section>
+
+<!-- CHAPTER 2: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>Build a tyre, layer by layer</h2>
+  <p>A tyre looks like one black ring. Inside, it is 7 parts. Each part is a full ring that goes all the way around the wheel.</p>
+  <p>Press <b>Next</b> to add one part at a time. <b>Drag sideways</b> to turn the tyre. Use the <b>cut</b> slider to open it wider.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <label for="cut" class="ctrl">
+    <span class="small">Cut it open: <span id="cutVal" class="mono">90</span>&deg;</span>
+    <input id="cut" type="range" min="0" max="180" step="5" value="90">
+  </label>
+  <p class="small">The colours are only for learning. In real life almost everything is black rubber. Press "Real colours" at the end to see.</p>
+</section>
+
+<!-- CHAPTER 3 -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Why rubber grips the road</h2>
+  <p>Rub a pencil eraser on paper. It grabs. Rub a plastic ruler. It slides. Why?</p>
+  <p>Rubber is soft. It sinks into the tiny bumps of the road and holds on, like your fingertip pressing into rough cloth. Hard plastic just sits on top of the bumps.</p>
+  <p>So softer rubber grips more. But there is a catch. Soft rubber also <b>wears out faster</b>. And every time it squashes and springs back, it turns some energy into heat. That lost energy is paid for with <b>fuel</b>.</p>
+  <p>So tyre makers balance three things. You cannot have the best of all three. Pick a tyre type and see where it sits:</p>
+  <div class="fig">
+    <svg viewBox="-30 0 420 260" role="img" aria-labelledby="tTitle">
+      <title id="tTitle">Triangle with corners Grip, Long life and Fuel saving, with a dot for the chosen tyre type</title>
+      <polygon points="180,30 40,225 320,225" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="2"/>
+      <text x="180" y="20" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="800" fill="var(--ink)">GRIP</text>
+      <text x="40" y="246" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="800" fill="var(--ink)">LONG LIFE</text>
+      <text x="320" y="246" text-anchor="middle" font-family="var(--font-display)" font-size="14" font-weight="800" fill="var(--ink)">FUEL SAVING</text>
+      <circle id="tyreDot" cx="180" cy="160" r="12" fill="var(--rubber)" stroke="var(--accent)" stroke-width="3"/>
+    </svg>
+  </div>
+  <div class="row" id="tyreTypes">
+    <button type="button" data-t="perf">Sporty</button>
+    <button type="button" data-t="tour" aria-pressed="true">Comfort</button>
+    <button type="button" data-t="eco">Eco</button>
+    <button type="button" data-t="life">Long-life</button>
+  </div>
+  <p id="tyreInfo" class="note"></p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>What happens in the rain</h2>
+  <p>Think of the grooves as <b>drains</b>. When you drive on a wet road, the grooves push the water out, so the rubber can still touch the road.</p>
+  <p>A new car tyre has grooves about <b>8 mm</b> deep. As you drive, they wear down. At <b>1.6 mm</b> the tyre is finished. Small raised bars inside the grooves show you when you reach it.</p>
+  <p>If the grooves are too shallow, or you go too fast, the water cannot escape. It builds up in front and lifts the tyre. Now you are driving on water. Switch tyres and watch:</p>
+  <div class="fig">
+    <svg class="aqua" id="aqua" viewBox="0 0 360 190" role="img" aria-labelledby="aTitle">
+      <title id="aTitle">A tyre on a wet road. With new tread, water sprays out behind. With worn tread, a wedge of water lifts the tyre.</title>
+      <rect x="0" y="150" width="360" height="40" fill="var(--muted)" opacity="0.25"/>
+      <rect x="0" y="143" width="360" height="8" fill="var(--water)" opacity="0.45"/>
+      <line class="dash" x1="0" y1="172" x2="360" y2="172" stroke="var(--accent)" stroke-width="3" stroke-dasharray="20 20"/>
+      <path class="wedge" d="M60,151 L132,151 Q130,143 124,138 Z" fill="var(--water)"/>
+      <rect class="wedge" x="120" y="143" width="120" height="8" fill="var(--water)"/>
+      <g class="lift">
+        <circle cx="180" cy="88" r="58" fill="var(--rubber)"/>
+        <circle cx="180" cy="88" r="32" fill="var(--steel)"/>
+        <g class="grooves" stroke="var(--water)" stroke-width="3" opacity="0.9">
+          <line x1="160" y1="138" x2="164" y2="146"/>
+          <line x1="180" y1="140" x2="180" y2="148"/>
+          <line x1="200" y1="138" x2="196" y2="146"/>
+        </g>
+      </g>
+      <g fill="var(--water)">
+        <circle class="drop" cx="228" cy="140" r="3"/>
+        <circle class="drop" cx="232" cy="144" r="2.5" style="animation-delay:.2s"/>
+        <circle class="drop" cx="226" cy="146" r="2" style="animation-delay:.45s"/>
+        <circle class="drop" cx="236" cy="138" r="2.5" style="animation-delay:.7s"/>
+        <circle class="drop" cx="230" cy="142" r="2" style="animation-delay:.9s"/>
+      </g>
+      <text id="aquaLabel" x="12" y="24" font-family="var(--font-display)" font-size="13" font-weight="600" fill="var(--ink)">New tread: water escapes, rubber touches road</text>
+      <text x="12" y="186" font-family="var(--font-body)" font-size="11" fill="var(--muted)">car moving left</text>
+    </svg>
+  </div>
+  <div class="row" id="treadBtns">
+    <button type="button" data-m="new" aria-pressed="true">New tyre (8 mm)</button>
+    <button type="button" data-m="worn">Worn tyre (1.6 mm)</button>
+  </div>
+  <p>This is called <b>aquaplaning</b>. For those few seconds, the steering and brakes do nothing.</p>
+  <p class="note"><b>Monsoon tip:</b> wet braking gets much worse long before 1.6 mm. If you drive a lot in heavy rain, many experts say change tyres at about 3 mm.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Read your own tyre tonight</h2>
+  <p>Go to your car and look at the side of a tyre. You will find a code like this. Tap each part:</p>
+  <div class="code" id="code" role="group" aria-label="Tyre size code 205/55 R16 91V">
+    <button type="button" data-k="w" aria-pressed="true">205</button>
+    <button type="button" data-k="a">/55</button>
+    <button type="button" data-k="r">R</button>
+    <button type="button" data-k="d">16</button>
+    <button type="button" data-k="l">91</button>
+    <button type="button" data-k="s">V</button>
+  </div>
+  <div class="explain" id="explain" aria-live="polite"></div>
+  <h3>Your tyre's birthday</h3>
+  <p>Look for the letters <b>DOT</b>. The last 4 digits after it tell you when the tyre was made: week, then year. Type yours here:</p>
+  <div class="row">
+    <label for="dot">Last 4 digits:</label>
+    <input id="dot" type="text" inputmode="numeric" maxlength="4" value="2324">
+  </div>
+  <p id="dotOut" class="note" aria-live="polite"></p>
+  <p>Why age matters: rubber slowly goes hard with time and sun, even when the car is parked. Hard rubber grips less, even if the grooves look deep.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"Fill air up to the number printed on the tyre."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. That number is the <b>most</b> the tyre can safely hold. Use the number on your car's door sticker.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Filling nitrogen makes a big difference."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">Mostly false. Normal air is already about 78% nitrogen. Pure nitrogen leaks a little slower, but checking pressure every two weeks matters much more.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Bigger alloy wheels with thin tyres give a softer ride."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. A thin sidewall has less rubber to soak up bumps. The ride gets harsher, and the wheel bends more easily in potholes.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH (12 MIN)</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/EulE-kat54Q" title="The Ultimate Tire Sidewall Guide, by Engineering Explained" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=EulE-kat54Q" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>The Ultimate Tire Sidewall Guide</b><br><span style="color:#C3CAD1;font-size:.9rem">Engineering Explained, on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch only after Chapter 5. Pause before he explains each marking and say the answer yourself first.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four checks on your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Read the size code and DOT date on one tyre. Put the digits in the checker above.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Find the correct pressure on the driver door sticker. Check all four tyres before driving, when they are cold.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>Look inside the grooves. Find the small wear bars. How close is your tread to them?</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>Look at the sides for a bulge or deep cut. A bulge means broken cords inside. That tyre must be replaced, not repaired.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. What really carries the weight of the car?</summary><p>The air. The tyre squashes until the flat patch is big enough: pressure times patch area equals the weight on that wheel.</p></details>
+  <details><summary>2. Which layer stops the tyre from blowing up like a balloon?</summary><p>The body ply: fabric cords that run from one bead, over the top, to the other bead.</p></details>
+  <details><summary>3. Why does a worn tyre aquaplane more easily?</summary><p>Its grooves are shallow, so they cannot drain the water fast enough. The water lifts the tyre off the road.</p></details>
+  <p class="small">From tomorrow, each lesson also asks you about older lessons.</p>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: what carries the weight, what the layers do, and why grooves matter in rain.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. A tyre is..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Physics:</b> the same pressure and area idea is why a camel's wide feet do not sink in sand.</li>
+    <li><b>Chemistry:</b> in 1839 Charles Goodyear found that heating rubber with sulfur makes it strong and springy. This is called vulcanisation.</li>
+    <li><b>India:</b> most of India's natural rubber grows in Kerala. MRF started in Chennai in 1946, making toy balloons.</li>
+    <li><b>Tomorrow, brakes:</b> brakes stop the wheel. Tyres stop the car. A great brake on a bald tyre still skids.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Speed letters</caption>
+        <thead><tr><th>Letter</th><th>Q</th><th>S</th><th>T</th><th>H</th><th>V</th><th>W</th><th>Y</th></tr></thead>
+        <tbody><tr><td>Max km/h</td><td class="mono">160</td><td class="mono">180</td><td class="mono">190</td><td class="mono">210</td><td class="mono">240</td><td class="mono">270</td><td class="mono">300</td></tr></tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>Radial (R):</b> cords run straight across. Almost all cars. <b>Bias:</b> cords cross at an angle. Some trucks and tractors.</li>
+      <li><b>Tubeless:</b> the inner liner holds air. A nail usually leaks slowly. <b>Tube type:</b> a separate tube, common on spoke wheels.</li>
+      <li><b>Age:</b> many car makers say replace after about 6 years. Tyre makers put the outer limit near 10 years.</li>
+      <li><b>Rotation:</b> swap tyre positions about every 8,000 to 10,000 km (check your manual).</li>
+      <li><b>Car pulls to one side:</b> get alignment. <b>Steering shakes at speed:</b> get balancing.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="../">&larr; All lessons</a>
+  <span>Next: Day 2, Brakes (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // Progress bar
+  var bar = document.getElementById('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = document.getElementById('guessOut');
+  document.querySelectorAll('#guess button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#guess button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      var ok = b.getAttribute('data-a') === '1';
+      guessOut.hidden = false;
+      guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+        'It is the <b>air</b>. The rubber and steel give the tyre its shape. The air carries the weight. Chapter 1 shows how.';
+    });
+  });
+
+  // Pressure model: patch area = load / pressure
+  var LOAD_N = 350 * 9.81, psi = document.getElementById('psi');
+  function updatePressure() {
+    var p = +psi.value, kpa = p * 6.895;
+    var areaCm2 = LOAD_N / (kpa * 1000) * 10000;
+    document.getElementById('psiVal').textContent = p;
+    document.getElementById('area').textContent = Math.round(areaCm2);
+    document.getElementById('kgcm').textContent = (kpa * 1000 / 9.81 / 10000).toFixed(1);
+    var w = 80 + (33 - p) * 1.2, len = (areaCm2 / 151) * 100 * (80 / w);
+    var patch = document.getElementById('patch');
+    patch.setAttribute('width', w.toFixed(1)); patch.setAttribute('x', (270 - w / 2).toFixed(1));
+    patch.setAttribute('height', len.toFixed(1)); patch.setAttribute('y', (110 - len / 2).toFixed(1));
+    var g0 = document.getElementById('g0'), g1 = document.getElementById('g1'), g2 = document.getElementById('g2');
+    var light = 'var(--accent-soft)', dark = 'var(--warn)', mid = 'var(--accent)';
+    var st = document.getElementById('pStatus');
+    if (p < 28) {
+      g0.setAttribute('stop-color', dark); g1.setAttribute('stop-color', light); g2.setAttribute('stop-color', dark);
+      st.className = 'status bad'; st.textContent = 'Too little air. The edges carry the weight and wear fast. The tyre bends a lot, gets hot and uses more fuel.';
+    } else if (p > 37) {
+      g0.setAttribute('stop-color', light); g1.setAttribute('stop-color', dark); g2.setAttribute('stop-color', light);
+      st.className = 'status bad'; st.textContent = 'Too much air. Only the centre touches properly and wears fast. Less rubber on the road means less grip and a bumpy ride.';
+    } else {
+      g0.setAttribute('stop-color', mid); g1.setAttribute('stop-color', mid); g2.setAttribute('stop-color', mid);
+      st.className = 'status ok'; st.textContent = 'About right for many Indian cars. The whole width shares the weight and wears evenly.';
+    }
+    var flat = len * 0.55, sink = 62 - Math.sqrt(Math.max(0, 62 * 62 - (flat / 2) * (flat / 2))), roadY = 158 - sink;
+    document.getElementById('sideClipRect').setAttribute('height', roadY.toFixed(1));
+    var road = document.getElementById('sideRoad'); road.setAttribute('y1', roadY.toFixed(1)); road.setAttribute('y2', roadY.toFixed(1));
+    var sf = document.getElementById('sideFlat');
+    sf.setAttribute('width', flat.toFixed(1)); sf.setAttribute('x', (90 - flat / 2).toFixed(1)); sf.setAttribute('y', (roadY - 3).toFixed(1));
+  }
+  psi.addEventListener('input', updatePressure); updatePressure();
+
+  // ---------- 3D tyre ----------
+  var STEPS = [
+    { key: 'rim', t: 'The wheel', d: 'We start with the metal wheel (the rim). The tyre has to sit tightly on it.', w: '' },
+    { key: 'bead', t: 'Bead: two steel rings', d: 'Two rings made of strong steel wire, one on each side. They grip the rim very tightly.', w: 'Without it: the tyre would slide off the wheel when you turn hard.' },
+    { key: 'ply', t: 'Body ply: the skeleton', d: 'Fabric cords that go from one bead, up and over the top, down to the other bead. See the U shape at the cut.', w: 'Without it: the tyre would blow up like a balloon.' },
+    { key: 'liner', t: 'Inner liner: the airtight wall', d: 'A special rubber on the inside that air cannot pass through easily. It does the job a tube used to do.', w: 'Without it: the air would leak out in a few days.' },
+    { key: 'air', t: 'Air: the part that lifts the car', d: 'Now we pump in air. It pushes outward on everything. This push is what carries the weight (Chapter 1).', w: '' },
+    { key: 'belts', t: 'Steel belts: keep the top flat', d: 'Thin layers of steel wire under the top of the tyre. They keep the top flat and stiff, like a belt around your waist.', w: 'Without them: the top would bulge round, wear unevenly, and nails would go in easily.' },
+    { key: 'tread', t: 'Tread: touches the road', d: 'Thick rubber on top with deep grooves going around. This is the part that grips the road and slowly wears away. The grooves are the drains from Chapter 4.', w: '' },
+    { key: 'sidewall', t: 'Sidewall: the soft sides', d: 'Rubber covering both sides. It bends over bumps for a soft ride, and the size code is printed on it.', w: 'Without it: stones and kerbs would cut the cords.' }
+  ];
+  var INFO = {
+    rim: 'Wheel rim: the metal wheel. Not part of the tyre.',
+    bead: 'Bead: steel wire rings that lock the tyre onto the rim.',
+    ply: 'Body ply: fabric cords from bead to bead. The skeleton that holds the air pressure.',
+    liner: 'Inner liner: airtight rubber on the inside.',
+    air: 'Air: carries the weight of the car.',
+    belts: 'Steel belts: keep the tread flat and stop nails.',
+    tread: 'Tread: grips the road and drains water. Wears away.',
+    sidewall: 'Sidewall: bends for comfort, carries the size code.'
+  };
+  var step = location.hash === '#full' ? 8 : 1;
+  var stepbar = document.getElementById('stepbar');
+  for (var i = 0; i < 8; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = document.getElementById('cap');
+  var selected = null;
+
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of 8</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === 8) html += '<span class="small">Done. Now drag to turn it, open the cut wider, and tap any part to see its name.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (el, idx) { el.classList.toggle('on', idx < step); });
+    document.getElementById('prevBtn').disabled = step <= 1;
+    document.getElementById('nextBtn').disabled = step >= 8;
+  }
+
+  function init3D() {
+    var stage = document.getElementById('stage');
+    var renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+    camera.position.set(8.3, 4.6, 11.6); camera.lookAt(0, 0, 0);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(5, 8, 7); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-6, -2, 5); scene.add(fill);
+
+    var pivot = new THREE.Group(); scene.add(pivot);
+    var tyre = new THREE.Group(); tyre.rotation.z = Math.PI / 2; pivot.add(tyre);
+    var baseY = 0.2; pivot.rotation.y = baseY;
+
+    // Profiles in (radius, width) units: 1 unit = 100 mm. A 205/55 R16 tyre.
+    function rect(r0, r1, y0, y1) { return [[r0, y0], [r1, y0], [r1, y1], [r0, y1]]; }
+    function circ(cx, cy, r, n) { var a = []; for (var k = 0; k < n; k++) { var t = k / n * Math.PI * 2; a.push([cx + Math.cos(t) * r, cy + Math.sin(t) * r]); } return a; }
+    function thick(c, t) {
+      var L = [], R = [];
+      for (var k = 0; k < c.length; k++) {
+        var a = c[Math.max(0, k - 1)], b = c[Math.min(c.length - 1, k + 1)];
+        var dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy) || 1, nx = -dy / len, ny = dx / len;
+        L.push([c[k][0] + nx * t / 2, c[k][1] + ny * t / 2]); R.push([c[k][0] - nx * t / 2, c[k][1] - ny * t / 2]);
+      }
+      return L.concat(R.reverse());
+    }
+    function mirror(c) { return c.map(function (p) { return [p[0], -p[1]]; }); }
+    var PLY = [[2.05,-0.86],[2.25,-0.93],[2.5,-0.98],[2.72,-0.96],[2.86,-0.86],[2.90,-0.6],[2.91,0],[2.90,0.6],[2.86,0.86],[2.72,0.96],[2.5,0.98],[2.25,0.93],[2.05,0.86]];
+    var LINER = [[2.08,-0.79],[2.25,-0.86],[2.5,-0.91],[2.70,-0.89],[2.82,-0.81],[2.86,-0.6],[2.87,0],[2.86,0.6],[2.82,0.81],[2.70,0.89],[2.5,0.91],[2.25,0.86],[2.08,0.79]];
+    var SW = [[2.08,-0.95],[2.25,-1.02],[2.5,-1.07],[2.72,-1.05],[2.88,-0.96]];
+    var AIR = [[1.97,-0.74],[2.08,-0.76],[2.25,-0.83],[2.5,-0.88],[2.69,-0.86],[2.80,-0.78],[2.84,-0.6],[2.85,0],[2.84,0.6],[2.80,0.78],[2.69,0.86],[2.5,0.88],[2.25,0.83],[2.08,0.76],[1.97,0.74]];
+    var TREAD = [[2.93,-0.98],[3.02,-1.03],[3.12,-0.95],[3.16,-0.80],[3.16,-0.50],[3.07,-0.50],[3.07,-0.40],[3.16,-0.40],[3.16,-0.05],[3.07,-0.05],[3.07,0.05],[3.16,0.05],[3.16,0.40],[3.07,0.40],[3.07,0.50],[3.16,0.50],[3.16,0.80],[3.12,0.95],[3.02,1.03],[2.93,0.98],[2.995,0.78],[2.995,-0.78]];
+    var RIM = [[1.86,-1.05],[2.17,-1.05],[2.17,-0.98],[1.99,-0.93],[1.96,-0.7],[1.96,0.7],[1.99,0.93],[2.17,0.98],[2.17,1.05],[1.86,1.05]];
+
+    var LAYERS = [
+      { key: 'rim', step: 1, polys: [RIM, rect(0.36, 1.87, -0.52, -0.40), rect(0.001, 0.38, -0.68, -0.22)], col: 0xb8c0c9, real: 0xb8c0c9, metal: 0.7, rough: 0.35 },
+      { key: 'bead', step: 2, polys: [circ(2.03, -0.84, 0.065, 14), circ(2.03, 0.84, 0.065, 14)], col: 0xf2f4f6, real: 0x9aa3ad, metal: 0.85, rough: 0.3 },
+      { key: 'ply', step: 3, polys: [thick(PLY, 0.045)], col: 0xe3a53a, real: 0x3b3c3e, metal: 0, rough: 0.8 },
+      { key: 'liner', step: 4, polys: [thick(LINER, 0.04)], col: 0x3f8fc0, real: 0x2b2d31, metal: 0, rough: 0.9 },
+      { key: 'air', step: 5, polys: [AIR], col: 0x8fd0f2, real: 0x8fd0f2, metal: 0, rough: 1, alpha: 0.22 },
+      { key: 'belts', step: 6, polys: [rect(2.932, 2.958, -0.82, 0.82), rect(2.964, 2.99, -0.76, 0.76)], col: 0x9ca8b4, real: 0x8e98a2, metal: 0.85, rough: 0.35 },
+      { key: 'tread', step: 7, polys: [TREAD], col: 0x34373c, real: 0x1d1f22, metal: 0, rough: 0.95 },
+      { key: 'sidewall', step: 8, polys: [thick(SW, 0.1), thick(mirror(SW), 0.1)], col: 0x667380, real: 0x232528, metal: 0, rough: 0.9 }
+    ];
+    var PHI_C = Math.PI / 4, SEG = 120, cut = 90 * Math.PI / 180, real = false;
+
+    LAYERS.forEach(function (l) {
+      l.mat = new THREE.MeshStandardMaterial({ color: l.col, metalness: l.metal, roughness: l.rough, side: THREE.DoubleSide, transparent: !!l.alpha, opacity: l.alpha || 1, depthWrite: !l.alpha });
+      l.group = new THREE.Group(); tyre.add(l.group);
+    });
+    function rebuild(l) {
+      while (l.group.children.length) { var c = l.group.children.pop(); c.geometry.dispose(); }
+      var start = PHI_C + cut / 2, len = Math.PI * 2 - cut;
+      l.polys.forEach(function (poly) {
+        var pts = poly.map(function (p) { return new THREE.Vector2(p[0], p[1]); });
+        pts.push(pts[0].clone());
+        var m = new THREE.Mesh(new THREE.LatheGeometry(pts, SEG, cut > 0.001 ? start : 0, cut > 0.001 ? len : Math.PI * 2), l.mat);
+        m.userData.key = l.key; l.group.add(m);
+        if (cut > 0.001) {
+          [start, start + len].forEach(function (phi) {
+            var shape = new THREE.Shape(poly.map(function (p) { return new THREE.Vector2(p[0], p[1]); }));
+            var capMesh = new THREE.Mesh(new THREE.ShapeGeometry(shape), l.mat);
+            capMesh.rotation.y = phi - Math.PI / 2; capMesh.userData.key = l.key; l.group.add(capMesh);
+          });
+        }
+      });
+    }
+    function rebuildAll() { LAYERS.forEach(rebuild); }
+    rebuildAll();
+
+    var fadeLayer = null, fadeStart = 0;
+    function applyStep(animate) {
+      LAYERS.forEach(function (l) { l.group.visible = l.step <= step; l.mat.emissive.setHex(0x000000); });
+      fadeLayer = null;
+      if (animate && !reduced) {
+        fadeLayer = LAYERS[step - 1]; fadeStart = performance.now();
+        fadeLayer.mat.transparent = true; fadeLayer.mat.opacity = 0;
+      }
+      selected = null; showCaption();
+    }
+    function setColours() {
+      LAYERS.forEach(function (l) { l.mat.color.setHex(real ? l.real : l.col); });
+    }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(460, Math.max(260, w * 0.85)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      camera.fov = w / h < 1.1 ? 40 : 36; camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', size); size();
+
+    // Drag to turn (horizontal only, so the page still scrolls)
+    var el = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    el.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) {
+      if (!down) return; down = false;
+      if (moved < 6 && e.target === el) pick(e);
+    });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v = new THREE.Vector2();
+    function pick(e) {
+      var r = el.getBoundingClientRect();
+      v.x = ((e.clientX - r.left) / r.width) * 2 - 1; v.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v, camera);
+      var hits = ray.intersectObjects(tyre.children, true).filter(function (h) { return h.object.parent.visible; });
+      var solid = hits.filter(function (h) { return h.object.userData.key !== 'air'; });
+      var hit = solid[0] || hits[0];
+      LAYERS.forEach(function (l) { l.mat.emissive.setHex(0x000000); });
+      if (!hit) { selected = null; showCaption(); return; }
+      selected = hit.object.userData.key;
+      LAYERS.forEach(function (l) { if (l.key === selected) l.mat.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    document.getElementById('nextBtn').addEventListener('click', function () { if (step < 8) { step++; applyStep(true); } });
+    document.getElementById('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(false); } });
+    var realBtn = document.getElementById('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var cutIn = document.getElementById('cut'), pending = false;
+    cutIn.addEventListener('input', function () {
+      document.getElementById('cutVal').textContent = cutIn.value;
+      cut = (+cutIn.value) * Math.PI / 180;
+      if (!pending) { pending = true; requestAnimationFrame(function () { pending = false; rebuildAll(); }); }
+    });
+
+    var visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.25;
+      if (fadeLayer) {
+        var k = Math.min(1, (t - fadeStart) / 700);
+        fadeLayer.mat.opacity = k * (fadeLayer.alpha || 1);
+        var glow = Math.sin(Math.min(1, (t - fadeStart) / 1400) * Math.PI);
+        fadeLayer.mat.emissive.setRGB(0.45 * glow, 0.3 * glow, 0);
+        if (t - fadeStart > 1400) {
+          fadeLayer.mat.opacity = fadeLayer.alpha || 1;
+          fadeLayer.mat.transparent = !!fadeLayer.alpha;
+          fadeLayer.mat.emissive.setHex(0x000000);
+          fadeLayer = null;
+        }
+      }
+      renderer.render(scene, camera);
+    }
+    applyStep(false);
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    var stage = document.getElementById('stage');
+    stage.innerHTML = '<div class="fail">The 3D tyre could not load on this device. Use the steps below: each one describes the next layer.</div>';
+    document.getElementById('cut').disabled = true; document.getElementById('realBtn').disabled = true;
+    document.getElementById('nextBtn').addEventListener('click', function () { if (step < 8) { step++; showCaption(); } });
+    document.getElementById('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // Triangle
+  var types = {
+    perf: [180, 70, 'Sporty: soft rubber. Lots of grip, but it wears out fast and uses more fuel.'],
+    tour: [180, 160, 'Comfort: a balance of all three, and quiet. Most cars in India come with this type.'],
+    eco: [262, 192, 'Eco: harder rubber with silica mixed in. Saves fuel (or EV battery), with a little less grip.'],
+    life: [98, 192, 'Long-life: hard rubber and deep grooves. Lasts very long, but grips less, especially in rain. Common on taxis.']
+  };
+  var dotEl = document.getElementById('tyreDot'), tBtns = document.querySelectorAll('#tyreTypes button');
+  function showType(k) {
+    tBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-t') === k ? 'true' : 'false'); });
+    dotEl.setAttribute('cx', types[k][0]); dotEl.setAttribute('cy', types[k][1]);
+    document.getElementById('tyreInfo').textContent = types[k][2];
+  }
+  tBtns.forEach(function (b) { b.addEventListener('click', function () { showType(b.getAttribute('data-t')); }); });
+  showType('tour');
+
+  // Aquaplaning
+  var aqua = document.getElementById('aqua'), aquaLabel = document.getElementById('aquaLabel'), trBtns = document.querySelectorAll('#treadBtns button');
+  trBtns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var worn = b.getAttribute('data-m') === 'worn';
+      trBtns.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      aqua.classList.toggle('worn', worn);
+      aquaLabel.textContent = worn ? 'Worn tread: water lifts the tyre. It floats.' : 'New tread: water escapes, rubber touches road';
+    });
+  });
+
+  // Sidewall code
+  var codeInfo = {
+    w: ['205 = width', 'The tyre is 205 mm wide, side to side. About the width of an A4 sheet.'],
+    a: ['55 = how tall the side is', 'The side is 55% as tall as the tyre is wide. 205 x 0.55 = about 113 mm. Smaller number = thinner side = harder ride.'],
+    r: ['R = radial', 'The cords inside run straight across, from bead to bead. Almost every car tyre is radial.'],
+    d: ['16 = wheel size', 'It fits a 16-inch wheel. So the whole tyre is about 632 mm tall.'],
+    l: ['91 = how much weight it can carry', 'This is a code, not kilograms. 91 means up to 615 kg per tyre.'],
+    s: ['V = top speed', 'V means the tyre is built for up to 240 km/h. Other letters are in the cheat sheet at the end.']
+  };
+  var codeBtns = document.querySelectorAll('#code button'), explain = document.getElementById('explain');
+  function showCode(k) {
+    codeBtns.forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-k') === k ? 'true' : 'false'); });
+    explain.innerHTML = '<b>' + codeInfo[k][0] + '</b><br>' + codeInfo[k][1];
+  }
+  codeBtns.forEach(function (b) { b.addEventListener('click', function () { showCode(b.getAttribute('data-k')); }); });
+  showCode('w');
+
+  // DOT date
+  var dot = document.getElementById('dot'), dotOut = document.getElementById('dotOut');
+  function updateDot() {
+    var val = dot.value.trim();
+    if (!/^\d{4}$/.test(val)) { dotOut.textContent = 'Type 4 digits, for example 2324.'; return; }
+    var wk = +val.slice(0, 2), yr = 2000 + +val.slice(2);
+    if (wk < 1 || wk > 53) { dotOut.textContent = 'The first two digits are the week, so they must be between 01 and 53.'; return; }
+    var made = new Date(yr, 0, 1 + (wk - 1) * 7), now = new Date();
+    if (made > now) { dotOut.textContent = 'That date is in the future. Check the digits again.'; return; }
+    var months = Math.floor((now - made) / (1000 * 60 * 60 * 24 * 30.44)), y = Math.floor(months / 12), m = months % 12;
+    var age = (y ? y + (y === 1 ? ' year ' : ' years ') : '') + m + (m === 1 ? ' month' : ' months');
+    var advice = y < 5 ? 'That is fine.' : (y < 6 ? 'Getting old. Get it checked for cracks.' : 'Old. Many car makers say replace it, even if the grooves look fine.');
+    dotOut.textContent = 'Made in week ' + wk + ' of ' + yr + '. It is about ' + age + ' old. ' + advice;
+  }
+  dot.addEventListener('input', updateDot); updateDot();
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tag = ans.querySelector('.mark') || document.createElement('span');
+        tag.className = 'mark ' + (ok ? 'right' : 'wrong'); tag.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tag, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl1-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl1-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = document.getElementById('explainBox');
+  box.value = store.get('dl1-explain') || '';
+  box.addEventListener('input', function () { store.set('dl1-explain', box.value); });
+})();
+</script>
+</body>
+</html>
