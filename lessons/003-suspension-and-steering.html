@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 3: Suspension and steering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+
+
+/* Day 3 extras */
+.hot { color: var(--warn); font-weight: 700; }
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.plotlab { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 3 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>Why doesn't your car bounce like a ball?</h1>
+  <p class="lead">Today you will drive over a speed breaker, build a front wheel corner in 3D, and find out how a small steering wheel turns two big tyres.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">You drive over a speed breaker at 20 km/h. In half a second, the wheel is pushed up 10 cm. Each wheel has a big spring. Springs bounce, like a ball.</p>
+  <p class="say">But a good car goes up once and settles. It does not bounce again and again. <b>What stops the bounce?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">The springs are very stiff</button>
+    <button type="button" data-a="1">A tube of oil turns the bounce into heat</button>
+    <button type="button" data-a="0">The tyres soak it all up</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>The spring carries the car</h2>
+  <p>Stand on a mattress. It sinks a little, then holds you. The car's springs do the same job. They hold the body of the car up.</p>
+  <p>When a wheel hits a bump, the spring squashes. The wheel goes up. The body hardly moves. <b>Without springs:</b> every stone on the road would hit your seat directly, and the wheels would jump off the road.</p>
+  <p>A normal car spring needs about <b>2.4 kg to squash 1 mm</b>. With 4 people inside, each spring holds about 310 kg. 310 &divide; 2.4 = about <b>130 mm</b>. So the car sinks about 13 cm onto its springs. Add people and watch:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 220" role="img" aria-labelledby="sgTitle">
+      <title id="sgTitle">A wheel on the road with a coil spring holding up the car body. More people squash the spring more.</title>
+      <line x1="10" y1="200" x2="350" y2="200" stroke="var(--muted)" stroke-width="2"/>
+      <circle cx="180" cy="170" r="28" fill="var(--rubber)"/>
+      <circle cx="180" cy="170" r="12" fill="var(--steel)"/>
+      <line x1="120" y1="34" x2="240" y2="34" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="5 5"/>
+      <text x="246" y="38" class="plotlab">spring with no load</text>
+      <polyline id="sgCoil" fill="none" stroke="var(--good)" stroke-width="4" stroke-linejoin="round" points=""/>
+      <rect id="sgBody" x="110" y="50" width="140" height="18" rx="4" fill="var(--accent)"/>
+      <text id="sgLab" x="180" y="64" text-anchor="middle" font-family="var(--font-display)" font-size="12" font-weight="600" fill="#1C1F23">car body</text>
+      <g id="sgPeople"></g>
+      <text id="sgSag" x="40" y="120" class="plotlab"></text>
+    </svg>
+  </div>
+  <label for="ppl" class="ctrl">
+    <span><b>People in the car:</b> <span id="pplVal" class="mono">4</span></span>
+    <input id="ppl" type="range" min="1" max="7" step="1" value="4">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Weight on each spring</div><div class="big"><span id="sgKg">312</span> kg</div></div>
+    <div class="tile"><div class="small">Spring squashes</div><div class="big"><span id="sgMm">130</span> mm</div></div>
+    <div class="tile"><div class="small">Natural bounces per second</div><div class="big"><span id="sgHz">1.4</span></div></div>
+  </div>
+  <p id="sgNote" class="note"></p>
+  <p class="small">Bounces per second = 1 &divide; (2&pi;) &times; &radic;(spring stiffness &divide; weight). Car makers aim for about 1 to 1.5. That is close to the rhythm of your steps when you walk, so it feels natural.</p>
+</section>
+
+<!-- CHAPTER 2 -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>The shock absorber stops the bounce</h2>
+  <p>Push a spoon slowly through honey. Easy. Now push it fast. Hard. Thick liquid fights fast movement. That is the trick inside a <b>shock absorber</b> (also called a <b>damper</b>).</p>
+  <p>It is a tube of oil with a piston inside. When the wheel moves, oil is forced through tiny holes. The oil gets warm. The bounce energy becomes heat, just like your brakes on Day 2.</p>
+  <p><b>Without it:</b> the car bounces 5 or 6 times after every bump. On a bumpy road the tyre hops. A hopping tyre cannot brake or steer.</p>
+  <p>Drive over a speed breaker (10 cm tall, 3.7 m long, the round shape Indian road rules suggest). Change the shock absorber and speed:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 160" role="img" aria-labelledby="qcTitle">
+      <title id="qcTitle">A car corner driving over a speed breaker. The body moves on its spring and shock absorber.</title>
+      <path id="qcRoad" d="" fill="var(--muted)" opacity="0.3"/>
+      <polyline id="qcSpring" fill="none" stroke="var(--good)" stroke-width="3" points=""/>
+      <line id="qcDamp" x1="200" y1="0" x2="200" y2="0" stroke="var(--warn)" stroke-width="7" stroke-linecap="round"/>
+      <rect id="qcBody" x="110" y="40" width="140" height="26" rx="6" fill="var(--accent)"/>
+      <circle id="qcWheel" cx="180" cy="118" r="20" fill="var(--rubber)"/>
+      <circle id="qcHub" cx="180" cy="118" r="8" fill="var(--steel)"/>
+      <text x="10" y="16" class="plotlab">green = spring, red = shock absorber</text>
+    </svg>
+  </div>
+  <div class="fig">
+    <svg viewBox="0 0 360 170" role="img" aria-labelledby="plTitle">
+      <title id="plTitle">Graph of road height and car body height over 5 seconds</title>
+      <line x1="10" y1="120" x2="350" y2="120" stroke="var(--line)" stroke-width="1"/>
+      <polyline id="plRoad" fill="none" stroke="var(--muted)" stroke-width="2" points=""/>
+      <polyline id="plBody" fill="none" stroke="var(--accent)" stroke-width="3" points=""/>
+      <circle id="plDot" cx="10" cy="120" r="5" fill="var(--accent)"/>
+      <text x="10" y="160" class="plotlab">0 s</text>
+      <text x="350" y="160" text-anchor="end" class="plotlab">5 s</text>
+      <text x="14" y="18" class="plotlab">grey = road, yellow = car body (heights x3 for clarity)</text>
+    </svg>
+  </div>
+  <label for="damp" class="ctrl">
+    <span><b>Shock absorber strength:</b> <span id="dampVal" class="mono">30</span>% <span id="dampWord" class="small"></span></span>
+    <input id="damp" type="range" min="0" max="100" step="5" value="30">
+  </label>
+  <label for="hspd" class="ctrl">
+    <span><b>Speed:</b> <span id="hspdVal" class="mono">20</span> km/h</span>
+    <input id="hspd" type="range" min="10" max="40" step="5" value="20">
+  </label>
+  <div class="row"><button type="button" id="replay" class="primary">Drive over it again</button></div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Body goes up</div><div class="big"><span id="qMax">0</span> cm</div></div>
+    <div class="tile"><div class="small">Bounces after</div><div class="big"><span id="qBounce">0</span></div></div>
+    <div class="tile"><div class="small">Hardest jolt you feel</div><div class="big"><span id="qG">0</span> g</div></div>
+  </div>
+  <p id="qNote" class="status ok"></p>
+  <p class="small">This is a real spring and damper model, worked out 500 times per second: spring force = stiffness &times; squash, damper force = strength &times; speed. 100% is "critical": the body never overshoots at all. Most cars sit near 25 to 40%.</p>
+</section>
+
+<!-- CHAPTER 3: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Build a front wheel corner, part by part</h2>
+  <p>Most small cars in India use the same front design. It is called a <b>MacPherson strut</b>. The spring and shock absorber stand up together like a tall pillar. Let us build it.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn it. At the end, press <b>Play bump</b> and turn the steering.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <div class="row">
+    <button type="button" id="bumpBtn" aria-pressed="false">Play bump</button>
+  </div>
+  <label for="bump" class="ctrl">
+    <span class="small">Push the wheel up: <span id="bumpVal" class="mono">0</span> mm</span>
+    <input id="bump" type="range" min="-40" max="80" step="5" value="0">
+  </label>
+  <label for="steer3d" class="ctrl">
+    <span class="small">Turn the steering wheel: <span id="steer3dVal" class="mono">0</span>&deg; (the road wheel turns <span id="steer3dRoad" class="mono">0</span>&deg;)</span>
+    <input id="steer3d" type="range" min="-540" max="540" step="10" value="0">
+  </label>
+  <label for="expl" class="ctrl">
+    <span class="small">Pull it apart: <span id="explVal" class="mono">0</span>%</span>
+    <input id="expl" type="range" min="0" max="100" step="5" value="0">
+  </label>
+  <p class="small">Look closely while it plays. The spring and shock absorber get shorter together. When you steer, the whole pillar turns with the wheel. The rubber and bearing at the top let it spin.</p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>How a small wheel turns two big tyres</h2>
+  <p>Your steering wheel turns a small gear called the <b>pinion</b>. Its teeth sit on a straight bar with teeth, called the <b>rack</b>. When the gear turns, the bar slides left or right. Tie rods carry that slide to the wheels.</p>
+  <p>It is a slow gear on purpose. You turn the steering wheel about <b>15&deg;</b> to turn the tyres <b>1&deg;</b>. That makes steering light and calm. <b>Without that gear:</b> a tiny shake of your hand would swing the car.</p>
+  <p>Now a surprise. In a turn, the two front wheels do not point the same way. The inside wheel runs on a smaller circle, so it must turn more. Turn the wheel and watch:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 300" role="img" aria-labelledby="akTitle">
+      <title id="akTitle">Top view of a car turning left. Lines from the front wheels meet at the turning centre.</title>
+      <defs><clipPath id="akClip"><rect x="0" y="0" width="360" height="300"/></clipPath></defs>
+      <g clip-path="url(#akClip)">
+        <circle id="akCircle" cx="0" cy="230" r="10" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 6"/>
+        <line id="akL1" x1="0" y1="0" x2="0" y2="0" stroke="var(--muted)" stroke-width="1"/>
+        <line id="akL2" x1="0" y1="0" x2="0" y2="0" stroke="var(--muted)" stroke-width="1"/>
+        <line id="akL3" x1="0" y1="230" x2="266" y2="230" stroke="var(--muted)" stroke-width="1" stroke-dasharray="3 4"/>
+        <circle id="akC" cx="0" cy="230" r="5" fill="var(--warn)"/>
+      </g>
+      <rect x="231" y="158" width="38" height="86" rx="10" fill="var(--steel)" opacity="0.35" stroke="var(--steel)"/>
+      <rect x="229" y="225" width="7" height="16" rx="2" fill="var(--rubber)"/>
+      <rect x="264" y="225" width="7" height="16" rx="2" fill="var(--rubber)"/>
+      <rect id="akFL" x="229" y="168" width="7" height="16" rx="2" fill="var(--accent)"/>
+      <rect id="akFR" x="264" y="168" width="7" height="16" rx="2" fill="var(--accent)"/>
+      <g id="akSW" transform="translate(52,52)">
+        <circle r="30" fill="none" stroke="var(--ink)" stroke-width="6"/>
+        <line x1="-30" y1="0" x2="30" y2="0" stroke="var(--ink)" stroke-width="5"/>
+        <line x1="0" y1="0" x2="0" y2="30" stroke="var(--ink)" stroke-width="5"/>
+        <circle r="3" cy="-30" fill="var(--accent)"/>
+      </g>
+      <text x="52" y="104" text-anchor="middle" class="plotlab">your steering wheel</text>
+      <text x="350" y="292" text-anchor="end" class="plotlab">dashed circle = path of the outer front tyre</text>
+    </svg>
+  </div>
+  <label for="sw" class="ctrl">
+    <span><b>Turn the steering wheel left:</b> <span id="swVal" class="mono">270</span>&deg;</span>
+    <input id="sw" type="range" min="0" max="540" step="10" value="270">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Inside wheel turns</div><div class="big"><span id="akIn">0</span>&deg;</div></div>
+    <div class="tile"><div class="small">Outside wheel turns</div><div class="big"><span id="akOut">0</span>&deg;</div></div>
+    <div class="tile"><div class="small">Turning circle radius</div><div class="big"><span id="akR">0</span> m</div></div>
+  </div>
+  <p id="akNote" class="note"></p>
+  <p class="small">Car: 2.45 m between front and rear wheels, 1.52 m between left and right. Radius = wheelbase &divide; tan(wheel angle). At full lock (1.5 turns) this gives about 4.8 m, close to a real small hatchback.</p>
+  <p>Today almost every new car has <b>electric power steering</b>. A small motor on the column or rack adds push, so parking is easy. It helps more at low speed and less at high speed.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Why your car pulls to one side</h2>
+  <p>The wheels must point in exactly the right direction. Mechanics call this <b>alignment</b>. A hard pothole hit can bend it a little. You cannot see it. But your tyres feel it.</p>
+  <p>The most important setting is <b>toe</b>: do the front tyres point straight ahead, or a little inward or outward? Even a tiny angle drags the tyre sideways while you drive, like pushing a shopping trolley with one stuck wheel.</p>
+  <p>Toe is measured as a gap in mm at the edge of the wheel. Try it:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 170" role="img" aria-labelledby="toeTitle">
+      <title id="toeTitle">Top view of the two front tyres. With toe, they point slightly inward.</title>
+      <line x1="180" y1="10" x2="180" y2="160" stroke="var(--line)" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="186" y="20" class="plotlab">straight ahead</text>
+      <g id="toeL" transform="translate(110,90)"><rect x="-14" y="-50" width="28" height="100" rx="8" fill="var(--rubber)"/><line x1="0" y1="-62" x2="0" y2="-50" stroke="var(--accent)" stroke-width="3"/></g>
+      <g id="toeR" transform="translate(250,90)"><rect x="-14" y="-50" width="28" height="100" rx="8" fill="var(--rubber)"/><line x1="0" y1="-62" x2="0" y2="-50" stroke="var(--accent)" stroke-width="3"/></g>
+      <text x="10" y="164" class="plotlab">angles drawn 30 times bigger so you can see them</text>
+    </svg>
+  </div>
+  <label for="toe" class="ctrl">
+    <span><b>Total toe-in:</b> <span id="toeVal" class="mono">2</span> mm</span>
+    <input id="toe" type="range" min="0" max="8" step="0.5" value="2">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Each tyre points off by</div><div class="big"><span id="toeDeg">0.14</span>&deg;</div></div>
+    <div class="tile"><div class="small">Dragged sideways, every km</div><div class="big"><span id="toeM">2.5</span> m</div></div>
+    <div class="tile"><div class="small">In 10,000 km</div><div class="big"><span id="toeKm">25</span> km</div></div>
+  </div>
+  <p id="toeNote" class="status ok"></p>
+  <p>Two other settings matter. <b>Camber</b> is the top of the tyre leaning in or out. If it is wrong, one edge of the tyre wears out first. <b>Caster</b> is why your steering wheel comes back to centre by itself after a turn. Look at a shopping trolley wheel: its pivot is in front of the wheel, so the wheel trails behind and points straight. Your front wheels are set up in a similar way.</p>
+  <p class="note"><b>Day 1 link:</b> car pulls to one side? Check tyre pressures first, then get <b>alignment</b>. Steering shakes at 80 km/h? That is <b>balancing</b>, a different job.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"Shock absorbers hold up the weight of the car."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. The springs hold the weight. Shock absorbers only slow the movement down. A car with dead shocks stands at the same height. It just keeps bouncing.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Stiffer suspension always gives better grip."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. On a smooth race track, stiff helps in corners. On a broken Indian road, a very stiff car makes the tyres skip over bumps. A tyre in the air has zero grip.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"If the car pulls to one side, you need wheel balancing."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Pulling comes from alignment or uneven tyre pressure. Balancing fixes a shake in the steering at higher speed. Many shops do both together, which is why people mix them up.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/aNxSigpIhxA" title="How Car Suspension Works, by Animated Engineering" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=aNxSigpIhxA" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>How Car Suspension Works: Components, Animation and Types</b><br><span style="color:#C3CAD1;font-size:.9rem">Animated Engineering, on YouTube (20 min)</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 3. You do not need all 20 minutes. When the MacPherson strut appears, pause. Name each part before the video does.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four checks on your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Bounce test. Push down hard on one corner of the car and let go. Good: it rises once and stops. Worn shocks: it bounces 2 or more times. Try all four corners.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Parked, engine on, count how many turns the steering wheel makes from full left to full right. Most cars: about 2.5 to 3. Do not hold it at full lock for long.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>Look at both front tyres. Is one edge worn more than the other? That points to a toe or camber problem.</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>Drive slowly over a speed breaker with the music off. Listen for a clunk or knock. That often means a worn rubber bush or link.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. Which part holds up the car, and which part stops the bouncing?</summary><p>The spring holds the weight. The shock absorber (damper) stops the bouncing by pushing oil through small holes, turning the movement into heat.</p></details>
+  <details><summary>2. When you turn left, which front wheel turns more, and why?</summary><p>The left (inside) wheel. It runs on a smaller circle, so it must point more sharply into the turn.</p></details>
+  <details><summary>3. What does the rack and pinion do?</summary><p>It turns the spinning of your steering wheel into a sliding push left or right. Tie rods carry that push to the wheels. It is a slow gear, about 15 to 1.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 2, Brakes):</b></p>
+  <details><summary>4. Why should you use a low gear going down a long ghat?</summary><p>The engine then resists the wheels and takes part of the work. The brakes stay cooler, so they do not fade and the fluid does not boil.</p></details>
+  <details><summary>5. Why does an air bubble in brake pipes make the pedal soft?</summary><p>Air can be squashed, liquid cannot. Your push squashes the bubble first, so the pedal goes down too far before the pads squeeze.</p></details>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: what the spring does, what the shock absorber does, how the steering turns the wheels, and why alignment matters.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. Each wheel has a spring that..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Day 1, tyres:</b> the air in the tyre is the first small spring. Suspension is the second, bigger one.</li>
+    <li><b>Day 2, brakes:</b> a shock absorber is a heat maker too. Brakes turn speed into heat. Dampers turn bounce into heat.</li>
+    <li><b>Buildings:</b> the Taipei 101 tower has a giant 660 tonne ball that sways and is slowed by dampers. Same spring and damper idea, against wind instead of speed breakers.</li>
+    <li><b>Tomorrow, the petrol engine:</b> you have learned how a car rolls, stops and turns. Next, what pushes it forward.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Common suspension types</caption>
+        <thead><tr><th>Type</th><th>Where you find it</th><th>Good at</th></tr></thead>
+        <tbody>
+          <tr><td>MacPherson strut</td><td>Front of most hatchbacks, sedans, small SUVs</td><td>Cheap, light, saves space</td></tr>
+          <tr><td>Twist beam</td><td>Rear of most Indian hatchbacks</td><td>Simple and strong. The two rear wheels are joined by a bendy beam</td></tr>
+          <tr><td>Double wishbone</td><td>Front of many ladder-frame SUVs and pickups, sports cars</td><td>Keeps the tyre flat on the road better</td></tr>
+          <tr><td>Multi-link</td><td>Rear of premium cars</td><td>Comfort and grip together. Costly</td></tr>
+          <tr><td>Leaf spring</td><td>Trucks, pickups, older SUVs</td><td>Carries heavy loads</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>Spring:</b> holds weight. <b>Damper:</b> controls speed of movement. <b>Bushes:</b> rubber pieces at every joint that stop noise and shake.</li>
+      <li><b>Anti-roll bar:</b> a bent steel bar linking left and right wheels. It reduces body lean in corners.</li>
+      <li><b>Ground clearance:</b> the gap under the car. Indian hatchbacks are often around 160 to 170 mm because of speed breakers.</li>
+      <li><b>Toe:</b> tyres pointing in or out. <b>Camber:</b> tyre leaning in or out. <b>Caster:</b> tilt of the steering pivot that self-centres the steering.</li>
+      <li><b>Alignment:</b> after a hard pothole, new tyres, or any suspension repair. Many people do it every 10,000 km.</li>
+      <li><b>Shock absorbers:</b> wear slowly, so you may not notice. Many need replacing somewhere between 50,000 and 100,000 km. Use the bounce test.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="002-brakes.html">&larr; Day 2: Brakes</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 4, How a petrol engine works (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function $(id) { return document.getElementById(id); }
+  function pressGroup(sel, cb) {
+    var bs = document.querySelectorAll(sel + ' button');
+    bs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        bs.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        cb(b);
+      });
+    });
+  }
+  function zig(x, y0, y1, w, n) {
+    var pts = [x + ',' + y0], step = (y1 - y0) / (n * 2 + 2);
+    pts.push(x + ',' + (y0 + step));
+    for (var i = 0; i < n * 2; i++) pts.push((x + (i % 2 ? -w : w) / 2) + ',' + (y0 + step * (i + 1.5)));
+    pts.push(x + ',' + (y1 - step)); pts.push(x + ',' + y1);
+    return pts.join(' ');
+  }
+
+  // Progress bar
+  var bar = $('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = $('guessOut');
+  pressGroup('#guess', function (b) {
+    var ok = b.getAttribute('data-a') === '1';
+    guessOut.hidden = false;
+    guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+      'Next to each spring is a <b>shock absorber</b>: a tube of oil. It turns the bounce into a little heat. The spring holds the car up. The oil stops the bounce. Chapter 2 lets you break one and see.';
+  });
+
+  // Chapter 1: spring sag. k = 24 N/mm (about 2.45 kg per mm)
+  var K = 24000, ppl = $('ppl');
+  function updSag() {
+    var n = +ppl.value, m = (1130 + 70 * n - 160) / 4;
+    var sagMm = m * 9.81 / K * 1000, hz = Math.sqrt(K / m) / (2 * Math.PI);
+    $('pplVal').textContent = n;
+    $('sgKg').textContent = Math.round(m);
+    $('sgMm').textContent = Math.round(sagMm);
+    $('sgHz').textContent = hz.toFixed(2);
+    var free = 36, s = 3, top = 142 - s * (free - sagMm / 10);
+    $('sgCoil').setAttribute('points', zig(180, top + 18, 142, 44, 6));
+    $('sgBody').setAttribute('y', top.toFixed(1));
+    $('sgLab').setAttribute('y', (top + 13).toFixed(1));
+    $('sgSag').textContent = 'sinks ' + Math.round(sagMm / 10) + ' cm';
+    $('sgSag').setAttribute('y', (top + 40).toFixed(1));
+    var g = $('sgPeople'), html = '';
+    for (var i = 0; i < n; i++) html += '<circle cx="' + (122 + i * 19.5) + '" cy="' + (top - 9).toFixed(1) + '" r="7" fill="var(--steel)"/>';
+    g.innerHTML = html;
+    $('sgNote').textContent = n <= 2 ? 'Light load. The car sits higher and bounces a little quicker. Fine.' :
+      (n <= 5 ? 'Normal family load. About 1.4 bounces per second: a calm, comfortable ride.' :
+      'Heavy load. The springs squash more and the car sits low. Speed breakers can now hit the bottom of the car. Go slower.');
+  }
+  ppl.addEventListener('input', updSag); updSag();
+
+  // Chapter 2: quarter car over a hump. m x'' = -k(x-y) - c(x'-y')
+  var M = 312, CC = 2 * Math.sqrt(K * M), HL = 3.7, HH = 0.10, T0 = 0.6, TT = 5, DT = 0.002;
+  var damp = $('damp'), hspd = $('hspd'), sim = null;
+  function hump(x) { if (x <= 0 || x >= HL) return 0; var u = 2 * x / HL - 1; return HH * (1 - u * u); }
+  function humpD(x) { if (x <= 0 || x >= HL) return 0; var u = 2 * x / HL - 1; return HH * (-2 * u) * (2 / HL); }
+  function simulate() {
+    var z = +damp.value / 100, v = +hspd.value / 3.6, c = z * CC;
+    var x = 0, xd = 0, ts = [], ys = [], xs = [], amax = 0, n = Math.round(TT / DT);
+    for (var i = 0; i <= n; i++) {
+      var t = i * DT, p = v * (t - T0), y = hump(p), yd = humpD(p) * v;
+      var a = (-K * (x - y) - c * (xd - yd)) / M;
+      amax = Math.max(amax, Math.abs(a));
+      if (i % 10 === 0) { ts.push(t); ys.push(y); xs.push(x); }
+      xd += a * DT; x += xd * DT;
+    }
+    var tEnd = T0 + HL / v, bounces = 0, xmax = 0;
+    for (var j = 1; j < xs.length - 1; j++) {
+      xmax = Math.max(xmax, xs[j]);
+      if (ts[j] > tEnd && xs[j] > xs[j - 1] && xs[j] >= xs[j + 1] && xs[j] > 0.005) bounces++;
+    }
+    return { ts: ts, ys: ys, xs: xs, amax: amax, xmax: xmax, bounces: bounces, z: z, v: v };
+  }
+  function px(t) { return 10 + t / TT * 340; }
+  function py(h) { return 120 - h * 300; }
+  function drawFrame(k) {
+    var p = sim.v * (sim.ts[k] - T0), d = '', i;
+    for (i = 0; i <= 36; i++) { var sx = i * 10, w = p + (sx - 180) / 60; d += (i ? 'L' : 'M') + sx + ',' + (140 - hump(w) * 300).toFixed(1); }
+    d += 'L360,160L0,160Z';
+    $('qcRoad').setAttribute('d', d);
+    var wy = 118 - sim.ys[k] * 300, by = 40 - sim.xs[k] * 300;
+    $('qcWheel').setAttribute('cy', wy.toFixed(1)); $('qcHub').setAttribute('cy', wy.toFixed(1));
+    $('qcBody').setAttribute('y', by.toFixed(1));
+    $('qcSpring').setAttribute('points', zig(165, by + 26, wy - 8, 18, 5));
+    $('qcDamp').setAttribute('y1', (by + 30).toFixed(1)); $('qcDamp').setAttribute('y2', (wy - 10).toFixed(1));
+    $('plDot').setAttribute('cx', px(sim.ts[k]).toFixed(1)); $('plDot').setAttribute('cy', py(sim.xs[k]).toFixed(1));
+  }
+  var animStart = 0, animOn = false;
+  function play() {
+    if (reduced) { var kmax = 0; sim.xs.forEach(function (x, i) { if (x > sim.xs[kmax]) kmax = i; }); drawFrame(kmax); return; }
+    animStart = performance.now(); if (!animOn) { animOn = true; requestAnimationFrame(tick); }
+  }
+  function tick(now) {
+    var t = (now - animStart) / 1000, k = Math.min(sim.ts.length - 1, Math.round(t / (DT * 10)));
+    drawFrame(k);
+    if (k < sim.ts.length - 1) requestAnimationFrame(tick); else animOn = false;
+  }
+  function updDamp(replay) {
+    sim = simulate();
+    var z = sim.z;
+    $('dampVal').textContent = damp.value; $('hspdVal').textContent = hspd.value;
+    $('dampWord').textContent = z < 0.1 ? '(worn out)' : z < 0.2 ? '(weak)' : z <= 0.45 ? '(normal car)' : z <= 0.7 ? '(firm)' : '(very stiff)';
+    var road = [], body = [];
+    for (var i = 0; i < sim.ts.length; i += 2) { road.push(px(sim.ts[i]).toFixed(1) + ',' + py(sim.ys[i]).toFixed(1)); body.push(px(sim.ts[i]).toFixed(1) + ',' + py(sim.xs[i]).toFixed(1)); }
+    $('plRoad').setAttribute('points', road.join(' ')); $('plBody').setAttribute('points', body.join(' '));
+    $('qMax').textContent = (sim.xmax * 100).toFixed(1);
+    $('qBounce').textContent = sim.bounces;
+    $('qG').textContent = (sim.amax / 9.81).toFixed(2);
+    var st = $('qNote');
+    if (z < 0.12) { st.className = 'status bad'; st.textContent = 'Worn out shocks. The car keeps bobbing long after the bump. On a rough road the tyre would hop and lose grip.'; }
+    else if (z > 0.6) { st.className = 'status bad'; st.textContent = 'Too stiff. No extra bounce, but the hump pushes hard into your seat. Every small bump on the road would shake you.'; }
+    else { st.className = 'status ok'; st.textContent = 'Nice balance. One soft rise, a small dip, and it settles. This is what car makers aim for.'; }
+    if (replay) play(); else drawFrame(0);
+  }
+  damp.addEventListener('input', function () { updDamp(true); });
+  hspd.addEventListener('input', function () { updDamp(true); });
+  $('replay').addEventListener('click', function () { play(); });
+  updDamp(false);
+  if ('IntersectionObserver' in window) {
+    var seen = false;
+    new IntersectionObserver(function (en) { if (en[0].isIntersecting && !seen) { seen = true; play(); } }, { threshold: 0.6 }).observe($('qcRoad').ownerSVGElement);
+  }
+
+  // ---------- 3D MacPherson strut corner ----------
+  var STEPS = [
+    { key: 'wheel', t: 'The wheel', d: 'We start with the wheel and tyre from Day 1. Everything we add now holds this wheel, lets it move up and down, and lets it turn.', w: '' },
+    { key: 'knuckle', t: 'Hub and knuckle: what the wheel hangs on', d: 'The hub spins with the wheel on bearings. The knuckle is a solid metal piece that holds the hub. It does not spin, but it turns left and right when you steer.', w: 'Without it: the wheel has nothing to hold on to.' },
+    { key: 'arm', t: 'Lower arm: the hinge', d: 'A strong arm from the bottom of the knuckle to the car body. It swings up and down on rubber bushes. A ball joint at the outer end lets the knuckle tilt and turn.', w: 'Without it: the bottom of the wheel would swing forward, back and sideways.' },
+    { key: 'damper', t: 'Shock absorber: the oil tube', d: 'A tube of oil clamped to the knuckle. A rod slides into it from the top. Oil squeezes through tiny holes and slows every movement.', w: 'Without it: the car bounces again and again after every bump (Chapter 2).' },
+    { key: 'spring', t: 'Coil spring: holds the weight', d: 'A thick steel coil sits around the shock absorber, between two round plates. It carries about 310 kg at this corner.', w: 'Without it: the car body would drop onto the wheel. Every bump would hit you.' },
+    { key: 'mount', t: 'Top mount: rubber and bearing', d: 'The top of the pillar bolts to the car body here. Rubber stops noise. A bearing lets the whole pillar turn when you steer.', w: 'Without it: road noise would ring through the car, and the pillar could not turn.' },
+    { key: 'tierod', t: 'Tie rod: pushes and pulls the wheel', d: 'A thin rod joined to an arm on the back of the knuckle. When it pushes or pulls, the knuckle turns, and so does the wheel.', w: 'Without it: the wheel would point wherever the road pushed it.' },
+    { key: 'rack', t: 'Steering rack and pinion', d: 'Your steering shaft ends in a small gear (pinion). It slides a toothed bar (rack) left and right inside this tube. The rack moves the tie rods (Chapter 4).', w: 'Without it: turning the steering wheel would do nothing.' }
+  ];
+  var N = STEPS.length;
+  var INFO = {
+    wheel: 'Wheel and tyre: rolls on the road. From Day 1.',
+    knuckle: 'Hub and knuckle: hold the wheel. The knuckle turns when you steer.',
+    arm: 'Lower arm: a hinge that lets the wheel move up and down.',
+    damper: 'Shock absorber: oil tube that stops bouncing.',
+    spring: 'Coil spring: holds up the weight of the car.',
+    mount: 'Top mount: rubber and bearing joining the strut to the body.',
+    tierod: 'Tie rod: pushes or pulls the knuckle to steer.',
+    rack: 'Steering rack: turns your steering into a side push.'
+  };
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = $('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = $('cap'), selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Press "Play bump" to drive over a bump. Move "Turn the steering wheel" to steer.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (el, idx) { el.classList.toggle('on', idx < step); });
+    $('prevBtn').disabled = step <= 1;
+    $('nextBtn').disabled = step >= N;
+  }
+
+  function init3D() {
+    var stage = $('stage'), renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(38, 1, 0.1, 200);
+    var TARGET = V(-2.7, 2.1, -0.5), CAMOFF = V(-8.2, 4.2, 12.6);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(-6, 9, 8); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(6, -2, 4); scene.add(fill);
+
+    var pivot = new THREE.Group(); pivot.position.copy(TARGET); scene.add(pivot);
+    var world = new THREE.Group(); world.position.copy(TARGET).multiplyScalar(-1); pivot.add(world);
+    var baseY = 0.0;
+
+    // 1 unit = 100 mm. Y up, Z forward, X outward (wheel side). Wheel centre at origin.
+    var MATS = {}, PARTS = {};
+    function mat(k, col, real, metal, rough) {
+      var m = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough, side: THREE.DoubleSide });
+      m.userData = { col: col, real: real }; (MATS[k] = MATS[k] || []).push(m); return m;
+    }
+    function tag(mesh, k) { mesh.userData.key = k; return mesh; }
+    var UP = V(0, 1, 0), CYL = new THREE.CylinderGeometry(1, 1, 1, 20);
+    function rod(r, m, k) { var me = tag(new THREE.Mesh(CYL, m), k); me.userData.r = r; return me; }
+    function setRod(me, a, b) {
+      var d = b.clone().sub(a), len = d.length();
+      me.position.copy(a).add(b).multiplyScalar(0.5);
+      me.scale.set(me.userData.r, len, me.userData.r);
+      me.quaternion.setFromUnitVectors(UP, d.normalize());
+    }
+    function lathe(pts, m, k) {
+      var v = pts.map(function (p) { return new THREE.Vector2(p[0], p[1]); }); v.push(v[0].clone());
+      return tag(new THREE.Mesh(new THREE.LatheGeometry(v, 64), m), k);
+    }
+    function grp(parent, k) { var g = new THREE.Group(); g.userData.key = k; parent.add(g); (PARTS[k] = PARTS[k] || []).push(g); return g; }
+
+    var BJ = V(-1.3, -1.5, 0), TOP = V(-2.7, 6.8, -0.35), AX = TOP.clone().sub(BJ), AL = AX.length(), AXN = AX.clone().normalize();
+    function P(t) { return BJ.clone().add(AX.clone().multiplyScalar(t)); }
+    function L(v) { return v.clone().sub(BJ); } // world point to steer-group local
+
+    // Steer group: turns about the kingpin axis and slides along it with bumps
+    var steer = new THREE.Group(); steer.position.copy(BJ); world.add(steer);
+
+    // Wheel (in its own group so it can move outward when exploded)
+    var wheelG = grp(steer, 'wheel'); wheelG.position.copy(L(V(0, 0, 0)));
+    var wheelSpin = new THREE.Group(); wheelSpin.rotation.z = -Math.PI / 2; wheelG.add(wheelSpin);
+    var mTyre = mat('wheel', 0x3a3d42, 0x1d1f22, 0, 0.95), mRim = mat('wheel', 0xc9d0d8, 0xb8c0c9, 0.6, 0.35);
+    wheelSpin.add(lathe([[2.0, -0.95], [2.6, -1.02], [2.95, -0.98], [3.12, -0.85], [3.16, -0.5], [3.16, 0.5], [3.12, 0.85], [2.95, 0.98], [2.6, 1.02], [2.0, 0.95]], mTyre, 'wheel'));
+    wheelSpin.add(lathe([[1.9, -0.98], [2.03, -0.98], [2.03, 0.98], [1.9, 0.98]], mRim, 'wheel'));
+    wheelSpin.add(lathe([[0.001, 0.25], [1.9, 0.25], [1.9, 0.4], [0.001, 0.4]], mRim, 'wheel'));
+
+    // Hub and knuckle
+    var knG = grp(steer, 'knuckle');
+    var mKn = mat('knuckle', 0xe3a53a, 0x6f7378, 0.3, 0.55);
+    var hub = rod(0.55, mKn, 'knuckle'); setRod(hub, L(V(0.25, 0, 0)), L(V(-1.25, 0, 0))); knG.add(hub);
+    var block = tag(new THREE.Mesh(new THREE.BoxGeometry(0.45, 1.3, 1.1), mKn), 'knuckle'); block.position.copy(L(V(-1.5, 0, 0))); knG.add(block);
+    var kUp = rod(0.22, mKn, 'knuckle'); setRod(kUp, L(V(-1.4, 0.4, 0)), L(P(0.36))); knG.add(kUp);
+    var kDn = rod(0.22, mKn, 'knuckle'); setRod(kDn, L(V(-1.45, -0.4, 0)), V(0, 0, 0)); knG.add(kDn);
+    var SA = V(-1.75, -0.3, -1.35);
+    var kArm = rod(0.14, mKn, 'knuckle'); setRod(kArm, L(V(-1.6, -0.2, -0.3)), L(SA)); knG.add(kArm);
+
+    // Damper tube (moves and turns with the knuckle) + lower spring seat
+    var dG = grp(steer, 'damper');
+    var mD = mat('damper', 0xc0503a, 0x222428, 0.3, 0.5);
+    var tube = rod(0.3, mD, 'damper'); setRod(tube, L(P(0.33)), L(P(0.70))); dG.add(tube);
+    var lseat = rod(0.85, mD, 'damper'); setRod(lseat, L(P(0.495)), L(P(0.505))); dG.add(lseat);
+    // Damper rod (fixed to the body)
+    var rodG = grp(world, 'damper');
+    var dRod = rod(0.11, mat('damper', 0xe9edf1, 0xc9ced3, 0.8, 0.25), 'damper'); setRod(dRod, P(0.62), P(0.965)); rodG.add(dRod);
+
+    // Spring: a helix built along +Y, then aimed along the strut axis
+    var SPR_LEN = (0.93 - 0.505) * AL, pts = [], TURNS = 5.5;
+    for (var h = 0; h <= 220; h++) { var tt = h / 220, an = tt * Math.PI * 2 * TURNS; pts.push(V(Math.cos(an) * 0.68, tt * SPR_LEN, Math.sin(an) * 0.68)); }
+    var sG = grp(world, 'spring');
+    var spring = tag(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 260, 0.085, 8, false), mat('spring', 0x8dc04a, 0x1e1f22, 0.3, 0.5)), 'spring');
+    sG.add(spring);
+    sG.quaternion.setFromUnitVectors(UP, AXN);
+
+    // Top mount (fixed to the body)
+    var mG = grp(world, 'mount');
+    var mMt = mat('mount', 0x7a4fa0, 0x2a2c30, 0.2, 0.7);
+    var useat = rod(0.85, mMt, 'mount'); mG.add(useat);
+    var rubber = rod(0.65, mMt, 'mount'); mG.add(rubber);
+    var plate = rod(1.15, mMt, 'mount'); mG.add(plate);
+
+    // Lower arm (inner pivots fixed to the body)
+    var aG = grp(world, 'arm');
+    var mA = mat('arm', 0x3f8fc0, 0x2a2c30, 0.4, 0.5);
+    var PF = V(-4.8, -1.35, 0.7), PR = V(-4.6, -1.35, -1.8);
+    var armF = rod(0.17, mA, 'arm'), armR = rod(0.17, mA, 'arm'); aG.add(armF); aG.add(armR);
+    var bushF = rod(0.3, mA, 'arm'), bushR = rod(0.3, mA, 'arm'); aG.add(bushF); aG.add(bushR);
+    var ball = tag(new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), mA), 'arm'); aG.add(ball);
+
+    // Tie rod and rack
+    var tG = grp(world, 'tierod'), rG = grp(world, 'rack');
+    var mT = mat('tierod', 0x2bb3a3, 0x8a9099, 0.6, 0.35), mR = mat('rack', 0x5a7fa8, 0x9aa2aa, 0.5, 0.45);
+    var tie = rod(0.09, mT, 'tierod'); tG.add(tie);
+    var tEnd = tag(new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 10), mT), 'tierod'); tG.add(tEnd);
+    var RY = -0.3, RZ = -1.4;
+    var housing = rod(0.3, mR, 'rack'); rG.add(housing);
+    var rackBar = rod(0.15, mR, 'rack'); rG.add(rackBar);
+    var boot = rod(0.24, mR, 'rack'); rG.add(boot);
+    var shaft = rod(0.12, mR, 'rack'); rG.add(shaft);
+    var pinBox = rod(0.38, mR, 'rack'); rG.add(pinBox);
+
+    var ORDER = ['wheel', 'knuckle', 'arm', 'damper', 'spring', 'mount', 'tierod', 'rack'];
+    var real = false, bump = 0, steerDeg = 0, explode = 0;
+    var q = new THREE.Quaternion();
+    function place() {
+      var s = bump * 0.01 / AXN.y, e = explode; // bump in mm -> units along axis
+      var ang = -steerDeg / 15 * Math.PI / 180;
+      steer.position.copy(BJ).add(AXN.clone().multiplyScalar(s));
+      steer.quaternion.setFromAxisAngle(AXN, ang);
+      wheelG.position.copy(L(V(0, 0, 0))).add(V(2.4 * e, 0, 0));
+      steer.updateMatrixWorld(true); world.updateMatrixWorld(true);
+      var inv = new THREE.Matrix4().copy(world.matrixWorld).invert();
+      function toWorld(local) { return local.clone().applyMatrix4(steer.matrixWorld).applyMatrix4(inv); }
+      var bj = toWorld(V(0, 0, 0)), sa = toWorld(L(SA)), lseatW = toWorld(L(P(0.505)));
+      // spring from lower seat to fixed upper seat
+      var up = P(0.93).add(AXN.clone().multiplyScalar(0.9 * e));
+      var lo = lseatW.clone().add(AXN.clone().multiplyScalar(0.4 * e));
+      sG.position.copy(lo);
+      sG.scale.set(1, Math.max(0.2, lo.distanceTo(up) / SPR_LEN), 1);
+      // top mount
+      var me = AXN.clone().multiplyScalar(0.9 * e);
+      setRod(useat, P(0.925).add(me), P(0.935).add(me));
+      setRod(rubber, P(0.94).add(me), P(0.985).add(me));
+      setRod(plate, P(0.985).add(me), P(1.0).add(me));
+      // lower arm
+      var ad = V(0, -0.8 * e, 0), bja = bj.clone().add(ad);
+      setRod(armF, PF.clone().add(ad), bja); setRod(armR, PR.clone().add(ad), bja);
+      setRod(bushF, PF.clone().add(ad).add(V(0, 0, 0.25)), PF.clone().add(ad).add(V(0, 0, -0.25)));
+      setRod(bushR, PR.clone().add(ad).add(V(0, 0, 0.25)), PR.clone().add(ad).add(V(0, 0, -0.25)));
+      ball.position.copy(bja);
+      // steering: rack slides so the tie rod follows the knuckle arm
+      var shift = sa.x - SA.x, td = V(0, 0, -1.3 * e);
+      var re = V(-5.2 + shift, RY, RZ).add(td);
+      setRod(tie, sa.clone().add(td), re); tEnd.position.copy(sa).add(td);
+      setRod(housing, V(-5.8, RY, RZ).add(td), V(-8.2, RY, RZ).add(td));
+      setRod(boot, re.clone().add(V(-0.1, 0, 0)), V(-5.8, RY, RZ).add(td));
+      setRod(rackBar, re, V(-6.4 + shift, RY, RZ).add(td));
+      setRod(pinBox, V(-7.2, RY - 0.1, RZ).add(td), V(-7.3, RY + 0.55, RZ - 0.2).add(td));
+      setRod(shaft, V(-7.3, RY + 0.5, RZ - 0.2).add(td), V(-7.8, 2.6, -2.9).add(td));
+    }
+    function applyStep() {
+      ORDER.forEach(function (k, idx) { PARTS[k].forEach(function (g) { g.visible = idx < step; }); });
+      selected = null; clearGlow(); showCaption();
+    }
+    function setColours() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.color.setHex(real ? m.userData.real : m.userData.col); }); }); }
+    function clearGlow() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.emissive.setHex(0); }); }); }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(480, Math.max(300, w * 0.95)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      var f = camera.aspect < 1.15 ? 1.1 : 0.95;
+      camera.position.copy(TARGET).add(CAMOFF.clone().multiplyScalar(f)); camera.lookAt(TARGET);
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', size); size();
+
+    var el = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    el.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === el) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleChain(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = el.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(world.children, true).filter(function (h) { return visibleChain(h.object) && h.object.userData.key; });
+      clearGlow();
+      if (!hits[0]) { selected = null; showCaption(); return; }
+      selected = hits[0].object.userData.key;
+      MATS[selected].forEach(function (m) { m.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(); } });
+    var realBtn = $('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var bumpIn = $('bump'), steerIn = $('steer3d'), explIn = $('expl'), playing = false, playStart = 0;
+    bumpIn.addEventListener('input', function () { playing = false; $('bumpBtn').setAttribute('aria-pressed', 'false'); bump = +bumpIn.value; $('bumpVal').textContent = bump; });
+    steerIn.addEventListener('input', function () {
+      steerDeg = +steerIn.value; $('steer3dVal').textContent = steerDeg; $('steer3dRoad').textContent = Math.round(steerDeg / 15);
+      if (step < N) { step = N; applyStep(); }
+    });
+    explIn.addEventListener('input', function () { $('explVal').textContent = explIn.value; explode = +explIn.value / 100; });
+    $('bumpBtn').addEventListener('click', function () {
+      playing = !playing; this.setAttribute('aria-pressed', playing ? 'true' : 'false'); playStart = performance.now();
+      if (playing && step < N) { step = N; applyStep(); }
+      if (!playing) { bump = 0; bumpIn.value = 0; $('bumpVal').textContent = 0; }
+    });
+
+    var visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.3;
+      if (playing) {
+        var ph = ((t - playStart) / 1000) % 3, b;
+        if (ph < 0.6) b = 75 * Math.sin(ph / 0.6 * Math.PI / 2);
+        else b = 75 * Math.exp(-(ph - 0.6) * 2.2) * Math.cos((ph - 0.6) * 2 * Math.PI * 1.3);
+        if (reduced) b = 60;
+        bump = Math.round(b); bumpIn.value = Math.round(b / 5) * 5; $('bumpVal').textContent = bump;
+      }
+      place();
+      renderer.render(scene, camera);
+    }
+    setColours(); place(); applyStep();
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    $('stage').innerHTML = '<div class="fail">The 3D model could not load on this device. Use the steps below: each one describes the next part.</div>';
+    ['expl', 'realBtn', 'bumpBtn', 'bump', 'steer3d'].forEach(function (id) { $(id).disabled = true; });
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // Chapter 4: Ackermann steering, top view. 22 px per metre.
+  var WB = 2.45, TR = 1.52, RATIO = 15, SC = 22, RX = 250, RYc = 230, FY = RYc - WB * SC, sw = $('sw');
+  function updSteer() {
+    var a = +sw.value, d = a / RATIO * Math.PI / 180;
+    $('swVal').textContent = a;
+    $('akSW').setAttribute('transform', 'translate(52,52) rotate(' + (-a) + ')');
+    var flx = RX - TR / 2 * SC, frx = RX + TR / 2 * SC;
+    if (d < 0.005) {
+      $('akIn').textContent = '0'; $('akOut').textContent = '0'; $('akR').textContent = 'straight';
+      ['akCircle', 'akC', 'akL1', 'akL2', 'akL3'].forEach(function (id) { $(id).style.display = 'none'; });
+      $('akFL').setAttribute('transform', ''); $('akFR').setAttribute('transform', '');
+      $('akNote').textContent = 'Wheels straight. Both point the same way.';
+      return;
+    }
+    ['akCircle', 'akC', 'akL1', 'akL2', 'akL3'].forEach(function (id) { $(id).style.display = ''; });
+    var R = WB / Math.tan(d), di = Math.atan(WB / (R - TR / 2)), dO = Math.atan(WB / (R + TR / 2));
+    var rOut = Math.sqrt((R + TR / 2) * (R + TR / 2) + WB * WB);
+    var cx = RX - R * SC;
+    $('akIn').textContent = (di * 180 / Math.PI).toFixed(1);
+    $('akOut').textContent = (dO * 180 / Math.PI).toFixed(1);
+    $('akR').textContent = rOut > 99 ? '99+' : rOut.toFixed(1);
+    $('akFL').setAttribute('transform', 'rotate(' + (-di * 180 / Math.PI).toFixed(2) + ' ' + flx + ' ' + (FY) + ')');
+    $('akFR').setAttribute('transform', 'rotate(' + (-dO * 180 / Math.PI).toFixed(2) + ' ' + frx + ' ' + (FY) + ')');
+    $('akFL').setAttribute('y', FY - 8); $('akFR').setAttribute('y', FY - 8);
+    $('akC').setAttribute('cx', cx.toFixed(1));
+    $('akCircle').setAttribute('cx', cx.toFixed(1)); $('akCircle').setAttribute('r', (rOut * SC).toFixed(1));
+    $('akL1').setAttribute('x1', cx.toFixed(1)); $('akL1').setAttribute('y1', RYc); $('akL1').setAttribute('x2', flx); $('akL1').setAttribute('y2', FY);
+    $('akL2').setAttribute('x1', cx.toFixed(1)); $('akL2').setAttribute('y1', RYc); $('akL2').setAttribute('x2', frx); $('akL2').setAttribute('y2', FY);
+    $('akL3').setAttribute('x1', cx.toFixed(1));
+    var diff = (di - dO) * 180 / Math.PI;
+    $('akNote').textContent = a >= 530 ? 'Full lock. A U-turn needs a road about ' + (2 * rOut).toFixed(1) + ' m wide, plus the car\'s overhang. The inside wheel turns ' + diff.toFixed(1) + '° more than the outside one.' :
+      'The inside wheel turns ' + diff.toFixed(1) + '° more. Both lines from the wheels meet at one point (red). The car turns around that point, so no tyre is dragged sideways.';
+  }
+  sw.addEventListener('input', updSteer); updSteer();
+
+  // Chapter 5: toe. Measured at the rim edge of a 16 inch wheel (406 mm).
+  var toe = $('toe');
+  function updToe() {
+    var mm = +toe.value, th = Math.atan((mm / 2) / 406), deg = th * 180 / Math.PI, perKm = 1000 * Math.tan(th);
+    $('toeVal').textContent = mm;
+    $('toeDeg').textContent = deg.toFixed(2);
+    $('toeM').textContent = perKm.toFixed(1);
+    $('toeKm').textContent = Math.round(perKm * 10);
+    $('toeL').setAttribute('transform', 'translate(110,90) rotate(' + (deg * 30).toFixed(2) + ')');
+    $('toeR').setAttribute('transform', 'translate(250,90) rotate(' + (-deg * 30).toFixed(2) + ')');
+    var st = $('toeNote');
+    if (mm <= 2) { st.className = 'status ok'; st.textContent = 'Close to the settings many cars use. The small drag keeps the car steady in a straight line.'; }
+    else { st.className = 'status bad'; st.textContent = 'Too much. Each tyre is scraped sideways ' + Math.round(perKm * 10) + ' km for every 10,000 km you drive. The edges wear out early and you use more fuel.'; }
+  }
+  toe.addEventListener('input', updToe); updToe();
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tagEl = ans.querySelector('.mark') || document.createElement('span');
+        tagEl.className = 'mark ' + (ok ? 'right' : 'wrong'); tagEl.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tagEl, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl3-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl3-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = $('explainBox');
+  box.value = store.get('dl3-explain') || '';
+  box.addEventListener('input', function () { store.set('dl3-explain', box.value); });
+})();
+</script>
+</body>
+</html>
