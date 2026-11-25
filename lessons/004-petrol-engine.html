@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 4: The petrol engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+
+
+/* Day 4 extras */
+.plotlab { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+.hot { color: var(--warn); font-weight: 700; }
+.phase { border-radius: 10px; padding: 10px 14px; font-weight: 700; background: var(--bg); display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.phase .dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.ebar { display: flex; height: 34px; border-radius: 8px; overflow: hidden; }
+.ebar span { display: block; height: 100%; transition: width .5s; }
+.legend { display: grid; gap: 6px; padding: 0; margin: 0; list-style: none; font-size: 0.95rem; }
+.legend li { display: flex; gap: 8px; align-items: center; }
+.legend i { width: 14px; height: 14px; border-radius: 4px; flex: none; }
+.legend b { font-family: var(--font-mono); margin-left: auto; font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .ebar span { transition: none; } }
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 4 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>How do tiny fires push your car forward?</h1>
+  <p class="lead">Today you will build a petrol engine in 3D, run it in slow motion, and find out where your petrol money really goes.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">You fill <b>Rs 1,000</b> of petrol. The engine burns all of it. Some of that energy pushes the car down the road. The rest is lost.</p>
+  <p class="say"><b>How much of your Rs 1,000 actually moves the car?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">About Rs 900. Engines are very good now.</button>
+    <button type="button" data-a="0">About Rs 600</button>
+    <button type="button" data-a="1">About Rs 200</button>
+    <button type="button" data-a="0">About Rs 20</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>Fire inside a closed can</h2>
+  <p>Light a match in open air. The hot gas just floats away. Now light it inside a closed steel can with one wall that can slide. The hot gas has nowhere to go. It <b>pushes</b> the sliding wall hard.</p>
+  <p>That is an engine. The can is the <b>cylinder</b>. The sliding wall is the <b>piston</b>. The fire is petrol mixed with air.</p>
+  <p>How hard does it push? A piston in a normal 1.2 litre Indian hatchback is 73 mm wide. Its top has an area of about <b>42 cm&sup2;</b>, the size of a large coin box lid. Each bar of pressure pushes about 1 kg on every cm&sup2;. Move the slider:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 210" role="img" aria-labelledby="f1Title">
+      <title id="f1Title">A cylinder with burning gas on top of a piston. The arrow shows the push on the piston.</title>
+      <rect x="100" y="20" width="12" height="170" fill="var(--steel)"/>
+      <rect x="208" y="20" width="12" height="170" fill="var(--steel)"/>
+      <rect x="100" y="12" width="120" height="12" fill="var(--steel)"/>
+      <rect id="f1Gas" x="112" y="24" width="96" height="60" fill="#E8742A" opacity="0.6"/>
+      <rect id="f1Pis" x="113" y="84" width="94" height="40" rx="3" fill="var(--accent)"/>
+      <line id="f1Arrow" x1="160" y1="128" x2="160" y2="170" stroke="var(--warn)" stroke-width="8"/>
+      <polygon id="f1Head" points="148,170 172,170 160,188" fill="var(--warn)"/>
+      <text x="232" y="54" class="plotlab">burning gas</text>
+      <text x="232" y="106" class="plotlab">piston (73 mm wide)</text>
+      <text x="232" y="160" class="plotlab">push</text>
+    </svg>
+  </div>
+  <label for="bar" class="ctrl">
+    <span><b>Gas pressure:</b> <span id="barVal" class="mono">60</span> bar</span>
+    <input id="bar" type="range" min="1" max="80" step="1" value="60">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Push on the piston</div><div class="big"><span id="f1Kg">2,560</span> kg</div></div>
+    <div class="tile"><div class="small">Same as standing on it</div><div class="big"><span id="f1Cars">2.8</span> cars</div></div>
+  </div>
+  <p id="f1Note" class="note"></p>
+  <p>The fuel for one bang is tiny. At full power, one cylinder takes in about 0.3 litre of air. It needs only about <b>1/40 of a gram</b> of petrol. That is about the weight of one grain of rice.</p>
+  <p>But petrol is packed with energy. The energy in <b>1 litre</b> could, in theory, lift your car about <b>3 km straight up</b>. That is higher than Ooty.</p>
+</section>
+
+<!-- CHAPTER 2 -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>Suck, squeeze, bang, blow</h2>
+  <p>One push is not enough. The engine must do it again and again, thousands of times a minute. So it repeats four steps, called <b>strokes</b>. A stroke is one trip of the piston, top to bottom or bottom to top.</p>
+  <p>Tap each stroke, or press Play. Watch the two little doors at the top. These are the <b>valves</b>. Blue lets air in. Grey lets smoke out.</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 320" role="img" aria-labelledby="f2Title">
+      <title id="f2Title">Side view of one cylinder with piston, connecting rod, crank, two valves and a spark plug, moving through the four strokes</title>
+      <rect x="82" y="36" width="96" height="34" rx="4" fill="var(--steel)" opacity="0.55"/>
+      <rect x="82" y="70" width="10" height="150" fill="var(--steel)"/>
+      <rect x="168" y="70" width="10" height="150" fill="var(--steel)"/>
+      <rect id="f2Gas" x="93" y="70" width="74" height="10" fill="#8FD0F2" opacity="0.7"/>
+      <g id="f2Spark" opacity="0"><circle cx="130" cy="74" r="9" fill="#FFD24A"/><circle cx="130" cy="74" r="4" fill="#FFFFFF"/></g>
+      <rect x="126" y="22" width="8" height="48" fill="var(--ink)"/>
+      <g id="f2VIn"><rect x="110" y="20" width="4" height="50" fill="var(--water)"/><rect x="100" y="66" width="24" height="5" rx="2" fill="var(--water)"/></g>
+      <g id="f2VEx"><rect x="146" y="20" width="4" height="50" fill="var(--muted)"/><rect x="136" y="66" width="24" height="5" rx="2" fill="var(--muted)"/></g>
+      <line id="f2Rod" x1="130" y1="100" x2="130" y2="262" stroke="var(--good)" stroke-width="9" stroke-linecap="round"/>
+      <rect id="f2Pis" x="94" y="76" width="72" height="34" rx="3" fill="var(--accent)"/>
+      <circle cx="130" cy="262" r="44" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="4 4"/>
+      <circle cx="130" cy="262" r="10" fill="var(--rubber)"/>
+      <line id="f2Arm" x1="130" y1="262" x2="130" y2="226" stroke="var(--rubber)" stroke-width="10" stroke-linecap="round"/>
+      <circle id="f2Pin" cx="130" cy="226" r="6" fill="var(--steel)"/>
+      <text x="96" y="14" class="plotlab">air in</text>
+      <text x="140" y="14" class="plotlab">smoke out</text>
+      <text id="f2Stroke" x="200" y="60" font-family="var(--font-display)" font-size="18" font-weight="800" fill="var(--ink)">1. Suck</text>
+      <text id="f2L1" x="200" y="84" class="plotlab"></text>
+      <text id="f2L2" x="200" y="100" class="plotlab"></text>
+      <text id="f2L3" x="200" y="116" class="plotlab"></text>
+      <text x="200" y="250" class="plotlab">crank turns</text>
+      <text x="200" y="264" class="plotlab">2 full turns</text>
+      <text x="200" y="278" class="plotlab">= 4 strokes</text>
+    </svg>
+  </div>
+  <div class="row" id="strokeBtns">
+    <button type="button" data-p="90" aria-pressed="true">1. Suck</button>
+    <button type="button" data-p="270">2. Squeeze</button>
+    <button type="button" data-p="380">3. Bang</button>
+    <button type="button" data-p="630">4. Blow</button>
+    <button type="button" id="f2Play" class="primary">Play</button>
+  </div>
+  <label for="ang" class="ctrl">
+    <span class="small">Turn the crank by hand: <span id="angVal" class="mono">90</span>&deg; of 720&deg;</span>
+    <input id="ang" type="range" min="0" max="719" step="1" value="90">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Space above piston</div><div class="big"><span id="f2V">0</span> cc</div></div>
+    <div class="tile"><div class="small">Gas pressure</div><div class="big"><span id="f2P">0</span> bar</div></div>
+    <div class="tile"><div class="small">Push on piston</div><div class="big"><span id="f2F">0</span> kg</div></div>
+  </div>
+  <p id="f2Note" class="note"></p>
+  <p>Only <b>one</b> stroke out of four makes power: the bang. The other three use up energy. So what keeps the crank turning between bangs? A heavy spinning disc on the crank, called the <b>flywheel</b>, like a potter's wheel that keeps going after you push it. More cylinders also help: in a 4 cylinder engine, one of them is always on its bang.</p>
+  <p class="small">The pressures come from real gas rules: squeezing to 1/11 of the space raises pressure about 22 times. Burning then multiplies it about 2.7 times more. Real engines spark a little before the top, but the idea is the same.</p>
+</section>
+
+<!-- CHAPTER 3: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Build one cylinder, part by part</h2>
+  <p>Now let us build it for real, in 3D. This is one cylinder of a 1.2 litre engine, with true sizes: 73 mm wide, and the piston travels 71.5 mm. A real car engine has 3 or 4 of these in a row.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn it. At the end, press <b>Play engine</b>.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <div class="row">
+    <button type="button" id="runBtn" aria-pressed="false">Play engine</button>
+  </div>
+  <div class="phase" id="phase"><span class="dot" id="phaseDot" style="background:#8FD0F2"></span><span id="phaseTxt">1. Suck: the piston goes down and pulls in air and petrol.</span></div>
+  <label for="crank3d" class="ctrl">
+    <span class="small">Turn the crank by hand: <span id="crank3dVal" class="mono">0</span>&deg;</span>
+    <input id="crank3d" type="range" min="0" max="719" step="2" value="0">
+  </label>
+  <label for="cut" class="ctrl">
+    <span class="small">Cut it open: <span id="cutVal" class="mono">180</span>&deg;</span>
+    <input id="cut" type="range" min="0" max="180" step="10" value="180">
+  </label>
+  <p class="small">The 3D engine plays in slow motion. A real one turns 13 to 100 times every second. Use the slider below to see how fast that really is.</p>
+  <label for="rpm" class="ctrl">
+    <span><b>Engine speed:</b> <span id="rpmVal" class="mono">2000</span> rpm (turns per minute)</span>
+    <input id="rpm" type="range" min="800" max="6000" step="100" value="2000">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Bangs per second, 4 cylinders</div><div class="big"><span id="rBang">67</span></div></div>
+    <div class="tile"><div class="small">Piston stops and restarts</div><div class="big"><span id="rStop">67</span> /s</div></div>
+    <div class="tile"><div class="small">Average piston speed</div><div class="big"><span id="rSpd">4.8</span> m/s</div></div>
+  </div>
+  <p id="rNote" class="note"></p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>Why squeeze before the bang?</h2>
+  <p>Squeezing uses up energy. So why not skip it? Think of a catapult. Pull the rubber back further, and the stone flies further. The squeeze is the pull back.</p>
+  <p>When the mix is squeezed, the fire starts in a tiny, hot space. The gas then has a long way to grow as the piston goes down. Longer growing means more push from the same drop of petrol.</p>
+  <p>Engineers call this the <b>compression ratio</b>. 11 means the space at the bottom is 11 times the space at the top. Change it:</p>
+  <label for="cr" class="ctrl">
+    <span><b>Compression ratio:</b> <span id="crVal" class="mono">11</span> : 1</span>
+    <input id="cr" type="range" min="5" max="16" step="0.5" value="11">
+  </label>
+  <div class="fig">
+    <svg viewBox="0 0 360 120" role="img" aria-labelledby="crTitle">
+      <title id="crTitle">Two bars: the space at the bottom of the stroke and the much smaller space at the top</title>
+      <text x="10" y="22" class="plotlab">space at bottom</text>
+      <rect x="10" y="30" width="340" height="26" rx="4" fill="#8FD0F2"/>
+      <text x="10" y="82" class="plotlab">space at top (squeezed)</text>
+      <rect id="crTop" x="10" y="90" width="31" height="26" rx="4" fill="var(--water)"/>
+    </svg>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Best possible efficiency</div><div class="big"><span id="crEff">62</span>%</div></div>
+    <div class="tile"><div class="small">Pressure after squeeze</div><div class="big"><span id="crP">23</span> bar</div></div>
+    <div class="tile"><div class="small">Mix gets as hot as</div><div class="big"><span id="crT">390</span>&deg;C</div></div>
+  </div>
+  <p id="crNote" class="status ok"></p>
+  <p>So why not squeeze to 20? Because hot squeezed petrol can explode <b>by itself</b>, before the spark, or in the wrong place. You hear it as a metal "pinging" on a hill. This is called <b>knock</b>. It can crack a piston. <b>Without a limit:</b> the engine would hammer itself to pieces.</p>
+  <p>The <b>octane</b> number tells you how well petrol resists knock. Normal petrol in India is 91 octane. Premium is 95 or more. Since 2025, most Indian pumps sell <b>E20</b>: petrol with 20% ethanol made from sugarcane and grain. Ethanol resists knock well, but one litre carries less energy, so mileage can drop a little in older cars.</p>
+  <p class="small">The "best possible" number uses the ideal engine formula: 1 &minus; 1 &divide; ratio<sup>0.4</sup>. Real engines lose heat and friction too, so the best car engines today reach about 35 to 40%.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Where your petrol money goes</h2>
+  <p>Back to the puzzle. Every bang makes the gas very hot. Most of that heat cannot be turned into push. It leaves through the exhaust pipe, or through the radiator. Pick how you drive:</p>
+  <div class="row" id="drive">
+    <button type="button" data-d="city" aria-pressed="true">City traffic</button>
+    <button type="button" data-d="hwy">Highway, steady 70 km/h</button>
+  </div>
+  <div class="ebar" id="ebar" role="img" aria-label="Bar showing where the petrol energy goes"></div>
+  <ul class="legend" id="elegend"></ul>
+  <p id="eNote" class="note"></p>
+  <p class="small">Rough split. The US Department of Energy says only about 12 to 30% of the fuel energy moves a normal petrol car.</p>
+  <p>All that waste heat must leave, or the engine melts. Two helpers keep it alive:</p>
+  <ul class="plain">
+    <li><b>Coolant and radiator:</b> a water mix flows around the cylinder and carries heat to the radiator at the front. The fan blows air through it. <span class="hot">Without it:</span> in a few minutes the metal swells, the head bends and the engine seizes.</li>
+    <li><b>Engine oil:</b> a thin film between every moving metal part. The piston slides on it. The crank spins on it. <span class="hot">Without it:</span> metal rubs on metal, gets red hot and welds itself together. This can kill an engine in under a minute.</li>
+  </ul>
+  <p class="note"><b>Day 2 link:</b> the same loss is why "engine braking" works. Lift your foot and the engine still has to suck, squeeze and blow. That work slows the car, and your brakes stay cool on a ghat.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"Premium high-octane petrol gives every car more power."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Octane is not extra energy. It only means the petrol resists knock better. If your manual says 91 octane, a normal engine will not get faster on 95. Engines tuned for high octane (some turbo cars) do benefit.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Warm up the engine for 10 minutes before driving."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False for modern fuel-injected cars. About 30 seconds is enough, then drive gently for the first few km. Long idling wastes petrol and warms the engine slower than driving.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Change the engine oil only when it turns black."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Oil has cleaners in it that hold dirt, so it goes dark quickly and that is normal. It wears out with km and time. Follow the service interval in your manual.</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/ZQvfHyfgBtA" title="How a Car Engine Works, by Animagraffs" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=ZQvfHyfgBtA" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>How a Car Engine Works</b><br><span style="color:#C3CAD1;font-size:.9rem">Animagraffs, on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 3. When the four strokes start, pause on each one. Say "suck, squeeze, bang or blow" before he does. Then watch how the camshaft is driven by a belt from the crank.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four checks on your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Engine off and cool, car on flat ground. Open the bonnet. Pull the oil dipstick, wipe it, push it back, pull again. Is the oil between the two marks?</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Find the coolant tank (see-through plastic, MIN and MAX marks). Check the level. Never open the radiator cap when the engine is hot.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>On your next drive, look at the rpm needle at 60 km/h in top gear. Work out the bangs per second: rpm &divide; 60 &times; 2 for a 4 cylinder engine (&times; 1.5 for 3 cylinders).</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>Look in your manual or fuel lid for the octane number and "E20". Find your next oil change, in km and months.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. Name the four strokes in order. Which one makes power?</summary><p>Suck (intake), squeeze (compression), bang (power), blow (exhaust). Only the bang pushes the piston. The other three are paid for by the flywheel and the other cylinders.</p></details>
+  <details><summary>2. What turns the up-and-down piston into spinning?</summary><p>The connecting rod and crankshaft. The rod pushes on an offset pin on the crank, like your leg on a bicycle pedal.</p></details>
+  <details><summary>3. Why can't engines squeeze the mix as hard as they like?</summary><p>Squeezed too hard, the hot mix explodes by itself (knock), which hammers the piston. Octane tells you how well the fuel resists it.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 3, Suspension and steering):</b></p>
+  <details><summary>4. You push down on one corner of a car and it bounces three times. What is worn?</summary><p>The shock absorber (damper). The spring still holds the car up, but nothing is turning the bounce into heat.</p></details>
+  <details><summary>5. What is toe, and what does too much of it do?</summary><p>Toe is the front tyres pointing slightly in or out. Too much drags each tyre sideways as it rolls, so the edges wear out early and you use more fuel.</p></details>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: why fire in a closed can pushes, the four strokes, what the crank and valves do, and where most of the petrol energy goes.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. An engine burns a tiny bit of petrol in a closed cylinder..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Day 2, brakes:</b> brakes turn speed into heat. The engine turns heat into speed. Same energy, opposite direction.</li>
+    <li><b>History:</b> Nikolaus Otto built the first working four-stroke engine in Germany in 1876. Engineers still call this the Otto cycle.</li>
+    <li><b>Physics:</b> the same squeeze-makes-heat rule is why a cycle pump gets warm at the bottom when you pump hard.</li>
+    <li><b>Tomorrow, gearbox and clutch:</b> the engine likes to spin 1,500 to 4,000 times a minute. At 100 km/h your wheels turn only about 840 times a minute. Something must match the two.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">The four strokes</caption>
+        <thead><tr><th>Stroke</th><th>Piston</th><th>Air valve</th><th>Smoke valve</th><th>Spark</th></tr></thead>
+        <tbody>
+          <tr><td>1. Suck (intake)</td><td>Down</td><td>Open</td><td>Closed</td><td>No</td></tr>
+          <tr><td>2. Squeeze (compression)</td><td>Up</td><td>Closed</td><td>Closed</td><td>At the top</td></tr>
+          <tr><td>3. Bang (power)</td><td>Down, pushed</td><td>Closed</td><td>Closed</td><td>No</td></tr>
+          <tr><td>4. Blow (exhaust)</td><td>Up</td><td>Closed</td><td>Open</td><td>No</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>cc (displacement):</b> total space the pistons sweep. 4 cylinders &times; 42 cm&sup2; &times; 7.15 cm = about 1,197 cc, a "1.2 litre" engine.</li>
+      <li><b>rpm:</b> crank turns per minute. Idle is about 700 to 900. Each cylinder fires once every 2 turns.</li>
+      <li><b>Torque:</b> how hard the engine twists. <b>Power:</b> torque &times; speed. Power in kW = torque (Nm) &times; rpm &divide; 9,549.</li>
+      <li><b>TDC / BDC:</b> top dead centre and bottom dead centre, where the piston stops for an instant.</li>
+      <li><b>Camshaft:</b> turns at half the crank speed, driven by a belt or chain. If a timing belt snaps, many engines get bent valves.</li>
+      <li><b>Knock:</b> mix explodes by itself. Modern engines have a knock sensor that delays the spark to stop it.</li>
+      <li><b>Fuel injection:</b> modern engines spray petrol with injectors controlled by a computer. Old engines used a carburettor.</li>
+      <li><b>3 vs 4 cylinders:</b> 3 is lighter and cheaper with less friction, but shakes a bit more at idle.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="003-suspension-and-steering.html">&larr; Day 3: Suspension and steering</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 5, Gearbox and clutch (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  function pressGroup(sel, cb) {
+    var bs = document.querySelectorAll(sel + ' button[data-p], ' + sel + ' button[data-a], ' + sel + ' button[data-d]');
+    bs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        bs.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        cb(b);
+      });
+    });
+    return bs;
+  }
+
+  // Progress bar
+  var bar = $('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = $('guessOut');
+  pressGroup('#guess', function (b) {
+    var ok = b.getAttribute('data-a') === '1';
+    guessOut.hidden = false;
+    guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+      'Only about <b>Rs 120 to Rs 300</b> moves the car. The rest leaves as <b>heat</b>, out of the exhaust pipe and the radiator. Chapter 5 shows exactly where it goes.';
+  });
+
+  // Shared engine numbers: bore 73 mm, stroke 71.5 mm, rod 125 mm, ratio 11
+  var AREA = Math.PI * 3.65 * 3.65; // cm2, about 41.85
+  var CRK = 35.75, ROD = 125, VS = AREA * 7.15, CR0 = 11, VC = VS / (CR0 - 1), VMAX = VS + VC;
+
+  // Chapter 1: force = pressure x area
+  var barIn = $('bar');
+  function upd1() {
+    var p = +barIn.value, kg = (p - 1) * 1.0197 * AREA;
+    if (p <= 1) kg = 0;
+    $('barVal').textContent = p;
+    $('f1Kg').textContent = fmt(kg);
+    $('f1Cars').textContent = (kg / 900).toFixed(1);
+    $('f1Gas').setAttribute('opacity', (0.15 + p / 80 * 0.75).toFixed(2));
+    var len = 8 + p / 80 * 44;
+    $('f1Arrow').setAttribute('y2', (128 + len).toFixed(1));
+    $('f1Head').setAttribute('points', '148,' + (128 + len).toFixed(1) + ' 172,' + (128 + len).toFixed(1) + ' 160,' + (146 + len).toFixed(1));
+    $('f1Note').textContent = p <= 1 ? 'Same pressure as outside air. No push at all. The flame needs to be closed in.' :
+      p < 8 ? 'About what a cycle pump or tyre can hold. Already a push of ' + fmt(kg) + ' kg.' :
+      p < 40 ? 'This is the squeezed mix just before the spark, or the gas half way down the stroke.' :
+      'This is the peak of a real petrol engine bang: about 50 to 70 bar. For an instant, the piston carries the weight of about ' + (kg / 900).toFixed(1) + ' small cars.';
+  }
+  barIn.addEventListener('input', upd1); upd1();
+
+  // Engine maths, angle in degrees 0..720 starting at top of the suck stroke
+  function pistonDrop(deg) { // mm below top
+    var t = deg * Math.PI / 180, s = Math.sin(t);
+    return CRK + ROD - (CRK * Math.cos(t) + Math.sqrt(ROD * ROD - CRK * CRK * s * s));
+  }
+  function gasVol(deg) { return VC + AREA * pistonDrop(deg) / 10; }
+  function gasP(deg) {
+    var a = ((deg % 720) + 720) % 720, v = gasVol(a);
+    if (a < 180) return 0.95;
+    if (a < 360) return 0.95 * Math.pow(VMAX / v, 1.3);
+    if (a < 540) return 2.565 * Math.pow(VMAX / v, 1.3);
+    return 1.1;
+  }
+  function liftAt(deg, centre) { // 0..1 valve opening, 240 degree duration
+    var d = ((deg - centre) % 720 + 1080) % 720 - 360;
+    return Math.abs(d) < 120 ? 0.5 * (1 + Math.cos(Math.PI * d / 120)) : 0;
+  }
+  var STROKES = [
+    { n: '1. Suck', c: '#8FD0F2', l1: 'Piston goes down.', l2: 'Air valve is open.', l3: 'Air and petrol rush in.', t: '1. Suck: the piston goes down and pulls in air and petrol.' },
+    { n: '2. Squeeze', c: '#2D6E92', l1: 'Both valves shut.', l2: 'Piston goes up.', l3: 'The mix is squeezed.', t: '2. Squeeze: both valves shut. The piston squeezes the mix into a tiny space.' },
+    { n: '3. Bang', c: '#E8742A', l1: 'Spark! The mix burns.', l2: 'Hot gas shoves', l3: 'the piston down.', t: '3. Bang: the spark lights the mix. Hot gas shoves the piston down. Power!' },
+    { n: '4. Blow', c: '#8C8F94', l1: 'Smoke valve is open.', l2: 'Piston goes up and', l3: 'pushes burnt gas out.', t: '4. Blow: the smoke valve opens. The piston pushes the burnt gas out.' }
+  ];
+  function strokeOf(deg) { return STROKES[Math.floor((((deg % 720) + 720) % 720) / 180)]; }
+
+  // Chapter 2: 2D step-through. 1 px = 1 mm. Crank centre (130,262), roof at y=68.
+  var ang = $('ang'), f2deg = 90, f2play = false, f2last = 0;
+  function draw2(deg) {
+    var a = ((deg % 720) + 720) % 720, t = a * Math.PI / 180;
+    var px = 130 + CRK * Math.sin(t), py = 262 - CRK * Math.cos(t);
+    var drop = pistonDrop(a), pinY = 262 - (CRK + ROD) + drop, crown = pinY - 26;
+    $('f2Pis').setAttribute('y', crown.toFixed(1));
+    $('f2Rod').setAttribute('x1', 130); $('f2Rod').setAttribute('y1', pinY.toFixed(1));
+    $('f2Rod').setAttribute('x2', px.toFixed(1)); $('f2Rod').setAttribute('y2', py.toFixed(1));
+    $('f2Arm').setAttribute('x2', px.toFixed(1)); $('f2Arm').setAttribute('y2', py.toFixed(1));
+    $('f2Pin').setAttribute('cx', px.toFixed(1)); $('f2Pin').setAttribute('cy', py.toFixed(1));
+    var st = strokeOf(a);
+    $('f2Gas').setAttribute('y', 70); $('f2Gas').setAttribute('height', Math.max(1, crown - 70).toFixed(1));
+    $('f2Gas').setAttribute('fill', a >= 360 && a < 540 ? (a < 450 ? '#E8742A' : '#C9603A') : st.c);
+    var li = liftAt(a, 100) * 9, le = liftAt(a, 620) * 9;
+    $('f2VIn').setAttribute('transform', 'translate(0,' + li.toFixed(1) + ')');
+    $('f2VEx').setAttribute('transform', 'translate(0,' + le.toFixed(1) + ')');
+    $('f2Spark').setAttribute('opacity', a >= 352 && a < 395 ? 1 : 0);
+    $('f2Stroke').textContent = st.n; $('f2L1').textContent = st.l1; $('f2L2').textContent = st.l2; $('f2L3').textContent = st.l3;
+    var p = gasP(a), kg = Math.max(0, (p - 1) * 1.0197 * AREA);
+    $('f2V').textContent = Math.round(gasVol(a));
+    $('f2P').textContent = p.toFixed(1);
+    $('f2F').textContent = fmt(kg);
+    var note;
+    if (a < 180) note = 'The space grows to ' + Math.round(VMAX) + ' cc. The pressure is a bit below outside air, so air is pulled in, like a syringe.';
+    else if (a < 360) note = 'The same air is squeezed into a smaller and smaller space. It gets hot and the pressure climbs. This costs work.';
+    else if (a < 540) note = 'This is the only stroke that pushes. Look how high the push is near the top: over 2,000 kg on a coin-box-sized piston.';
+    else note = 'The burnt gas still has some pressure and lots of heat when it leaves. That heat is lost money (Chapter 5).';
+    $('f2Note').textContent = note;
+    $('angVal').textContent = Math.round(a);
+    var idx = Math.floor(a / 180);
+    document.querySelectorAll('#strokeBtns button[data-p]').forEach(function (b, i) { b.setAttribute('aria-pressed', i === idx ? 'true' : 'false'); });
+  }
+  pressGroup('#strokeBtns', function (b) { stop2(); f2deg = +b.getAttribute('data-p'); ang.value = f2deg; draw2(f2deg); });
+  ang.addEventListener('input', function () { stop2(); f2deg = +ang.value; draw2(f2deg); });
+  function stop2() { f2play = false; $('f2Play').textContent = 'Play'; }
+  $('f2Play').addEventListener('click', function () {
+    if (f2play) { stop2(); return; }
+    f2play = true; this.textContent = 'Pause'; f2last = performance.now();
+    requestAnimationFrame(tick2);
+  });
+  function tick2(now) {
+    if (!f2play) return;
+    var dt = Math.min(0.1, (now - f2last) / 1000); f2last = now;
+    f2deg = (f2deg + dt * (reduced ? 40 : 110)) % 720; ang.value = Math.floor(f2deg); draw2(f2deg);
+    requestAnimationFrame(tick2);
+  }
+  draw2(f2deg);
+
+  // Chapter 3 readouts: rpm
+  var rpm = $('rpm');
+  function updRpm() {
+    var r = +rpm.value;
+    $('rpmVal').textContent = fmt(r);
+    $('rBang').textContent = fmt(r / 30);
+    $('rStop').textContent = fmt(r / 30);
+    $('rSpd').textContent = (2 * 0.0715 * r / 60).toFixed(1);
+    $('rNote').textContent = r <= 1000 ? 'Idling at a signal. Even now, each piston stops and starts ' + fmt(r / 30) + ' times every second.' :
+      r <= 3000 ? 'Normal city and highway driving. ' + fmt(r / 30) + ' little bangs every second blur into one smooth hum.' :
+      'Hard acceleration. The piston averages ' + (2 * 0.0715 * r / 60).toFixed(1) + ' m/s, about ' + Math.round(2 * 0.0715 * r / 60 * 3.6) + ' km/h, and changes direction ' + fmt(r / 30) + ' times a second. That is why oil matters so much.';
+  }
+  rpm.addEventListener('input', updRpm); updRpm();
+
+  // ---------- 3D single cylinder ----------
+  var STEPS = [
+    { key: 'block', t: 'The cylinder: a strong metal tube', d: 'The engine block has a smooth round tube inside, 73 mm wide. Everything happens in here. We have cut the front half away so you can see inside.', w: 'Without it: there is no closed space, and the fire just floats away (Chapter 1).' },
+    { key: 'piston', t: 'Piston and rings: the sliding wall', d: 'An aluminium plug that slides up and down in the tube. Three thin steel rings sit in grooves around it. Two seal the gas, one scrapes oil off the wall.', w: 'Without the rings: hot gas leaks past the piston and oil burns as blue smoke.' },
+    { key: 'rod', t: 'Connecting rod: the leg', d: 'A strong steel arm, 125 mm long. The top end swings on a pin inside the piston. The bottom end grabs the crank.', w: 'Without it: the piston pushes, but nothing passes the push on.' },
+    { key: 'crank', t: 'Crankshaft: up-down becomes spinning', d: 'A shaft with an offset pin, like a bicycle pedal. The rod pushes the pin round and round. Heavy weights on the other side balance it. At the end sits the flywheel (not shown).', w: 'Without it: you get a push, but no spinning to turn the wheels.' },
+    { key: 'head', t: 'Cylinder head: the lid', d: 'A thick metal lid bolted on top. The bang happens in the small space under it, called the combustion chamber. Two passages run through it: one for air in, one for smoke out.', w: 'Without it: the tube is open. No squeeze, no bang.' },
+    { key: 'valves', t: 'Valves: the two doors', d: 'Mushroom-shaped doors in the lid. The air valve (blue) opens to let air and petrol in. The smoke valve (grey) opens to let burnt gas out. Springs snap them shut.', w: 'Without them: you could not seal the gas in for the squeeze and bang.' },
+    { key: 'cams', t: 'Camshafts: open the doors on time', d: 'Shafts with egg-shaped bumps. As they turn, a bump presses a valve open, then lets it close. A belt or chain turns them at half the crank speed.', w: 'Without them: the doors would open at random, or never.' },
+    { key: 'plug', t: 'Spark plug: lights the fire', d: 'A small electric spark jumps across a tiny gap, at the exact right moment near the top of the squeeze. In a 4 cylinder engine at 2,000 rpm, that is about 67 sparks every second.', w: 'Without it: the squeezed mix just sits there. A petrol engine needs the spark.' }
+  ];
+  var N = STEPS.length;
+  var INFO = {
+    block: 'Cylinder: the tube where the bang happens.',
+    piston: 'Piston and rings: the sliding wall that gets pushed.',
+    rod: 'Connecting rod: links the piston to the crank.',
+    crank: 'Crankshaft: turns up-and-down into spinning.',
+    head: 'Cylinder head: the lid, with the air and smoke passages.',
+    valves: 'Valves: doors for air in and smoke out.',
+    cams: 'Camshafts: open each valve at the right moment.',
+    plug: 'Spark plug: makes the spark that lights the mix.',
+    gas: 'Gas: the air and petrol mix, or the burnt gas.'
+  };
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = $('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = $('cap'), selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Press "Play engine" and watch the valves, the spark and the colour of the gas.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (el, idx) { el.classList.toggle('on', idx < step); });
+    $('prevBtn').disabled = step <= 1;
+    $('nextBtn').disabled = step >= N;
+  }
+  var lastPhase = -1;
+  function showPhase(deg) {
+    var idx = Math.floor((((deg % 720) + 720) % 720) / 180);
+    if (idx === lastPhase) return; lastPhase = idx;
+    $('phaseTxt').textContent = STROKES[idx].t; $('phaseDot').style.background = STROKES[idx].c;
+  }
+
+  function init3D() {
+    var stage = $('stage'), renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
+    var TARGET = V(0, 11.6, 0), CAMOFF = V(18, 10, 46);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(10, 30, 25); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-15, 0, 15); scene.add(fill);
+
+    var pivot = new THREE.Group(); pivot.position.copy(TARGET); scene.add(pivot);
+    var world = new THREE.Group(); world.position.copy(TARGET).multiplyScalar(-1); pivot.add(world);
+    var baseY = 0;
+
+    // 1 unit = 10 mm. Y up along the cylinder, crank axis along Z, crank centre at origin.
+    var MATS = {}, PARTS = {};
+    function mat(k, col, real, metal, rough, alpha) {
+      var m = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough, side: THREE.DoubleSide, transparent: !!alpha, opacity: alpha || 1, depthWrite: !alpha });
+      m.userData = { col: col, real: real }; (MATS[k] = MATS[k] || []).push(m); return m;
+    }
+    function tag(mesh, k) { mesh.userData.key = k; return mesh; }
+    var UP = V(0, 1, 0), CYL = new THREE.CylinderGeometry(1, 1, 1, 28);
+    function rod(r, m, k) { var me = tag(new THREE.Mesh(CYL, m), k); me.userData.r = r; return me; }
+    function setRod(me, a, b) {
+      var d = b.clone().sub(a), len = d.length();
+      me.position.copy(a).add(b).multiplyScalar(0.5);
+      me.scale.set(me.userData.r, len, me.userData.r);
+      me.quaternion.setFromUnitVectors(UP, d.normalize());
+    }
+    function grp(parent, k) { var g = new THREE.Group(); g.userData.key = k; parent.add(g); (PARTS[k] = PARTS[k] || []).push(g); return g; }
+
+    var R = 3.575, L = 12.5, P2C = 2.6, BR = 3.65, DECK = 19.3;
+    function pinY(th) { var s = Math.sin(th); return R * Math.cos(th) + Math.sqrt(L * L - R * R * s * s); }
+
+    // Cut-away lathe parts (block and head)
+    var cut = Math.PI;
+    var LATHES = [];
+    function cutLathe(parent, poly, m, k) { var o = { g: new THREE.Group(), poly: poly, m: m, k: k }; parent.add(o.g); LATHES.push(o); buildLathe(o); return o; }
+    function buildLathe(o) {
+      while (o.g.children.length) { var c = o.g.children.pop(); c.geometry.dispose(); }
+      var start = cut / 2, len = Math.PI * 2 - cut;
+      var pts = o.poly.map(function (p) { return new THREE.Vector2(p[0], p[1]); }); pts.push(pts[0].clone());
+      o.g.add(tag(new THREE.Mesh(new THREE.LatheGeometry(pts, 72, cut > 0.001 ? start : 0, cut > 0.001 ? len : Math.PI * 2), o.m), o.k));
+      if (cut > 0.001) {
+        [start, start + len].forEach(function (phi) {
+          var shape = new THREE.Shape(o.poly.map(function (p) { return new THREE.Vector2(p[0], p[1]); }));
+          var capM = tag(new THREE.Mesh(new THREE.ShapeGeometry(shape), o.m), o.k);
+          capM.rotation.y = phi - Math.PI / 2; o.g.add(capM);
+        });
+      }
+    }
+
+    // 1. Block
+    var gBlock = grp(world, 'block');
+    var mBlock = mat('block', 0x8fa3b5, 0x9a9ea3, 0.35, 0.6);
+    cutLathe(gBlock, [[BR, 3.6], [5.4, 3.6], [5.4, 5.0], [4.9, 5.4], [4.9, DECK], [BR, DECK]], mBlock, 'block');
+
+    // 2. Piston (group moved each frame)
+    var gPiston = grp(world, 'piston');
+    var mPis = mat('piston', 0xe3a53a, 0xc4c8cc, 0.5, 0.4), mRing = mat('piston', 0x3a3d42, 0x6c7279, 0.8, 0.3);
+    var pBody = rod(3.58, mPis, 'piston'); setRod(pBody, V(0, -2.4, 0), V(0, P2C, 0)); gPiston.add(pBody);
+    [0.35, 0.75, 1.2].forEach(function (d) { var rg = rod(3.62, mRing, 'piston'); setRod(rg, V(0, P2C - d - 0.12, 0), V(0, P2C - d + 0.12, 0)); gPiston.add(rg); });
+    var wpin = rod(0.95, mRing, 'piston'); setRod(wpin, V(0, 0, -3.2), V(0, 0, 3.2)); gPiston.add(wpin);
+
+    // 3. Connecting rod
+    var gRod = grp(world, 'rod');
+    var mRod = mat('rod', 0x8dc04a, 0x7b8188, 0.6, 0.4);
+    var shaftR = rod(0.85, mRod, 'rod'); gRod.add(shaftR);
+    var bigEnd = rod(2.3, mRod, 'rod'); gRod.add(bigEnd);
+    var smallEnd = rod(1.3, mRod, 'rod'); gRod.add(smallEnd);
+
+    // 4. Crankshaft (rotates about Z)
+    var gCrank = grp(world, 'crank');
+    var mCrk = mat('crank', 0x3f8fc0, 0x5d636a, 0.7, 0.35);
+    var mainF = rod(2.2, mCrk, 'crank'); setRod(mainF, V(0, 0, 2.0), V(0, 0, 6.5)); gCrank.add(mainF);
+    var mainB = rod(2.2, mCrk, 'crank'); setRod(mainB, V(0, 0, -6.5), V(0, 0, -2.0)); gCrank.add(mainB);
+    var cpin = rod(1.9, mCrk, 'crank'); setRod(cpin, V(0, R, -1.4), V(0, R, 1.4)); gCrank.add(cpin);
+    [-1.85, 1.85].forEach(function (z) {
+      var web = tag(new THREE.Mesh(new THREE.BoxGeometry(3.4, 8.6, 0.9), mCrk), 'crank'); web.position.set(0, 0.2, z); gCrank.add(web);
+      var cw = tag(new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.6, 0.9, 32, 1, false, -Math.PI / 2, Math.PI), mCrk), 'crank');
+      cw.rotation.x = Math.PI / 2; cw.position.set(0, 0, z); gCrank.add(cw);
+    });
+
+    // Gas column
+    var gGas = new THREE.Group(); world.add(gGas); gGas.userData.key = 'gas';
+    var mGas = new THREE.MeshStandardMaterial({ color: 0x8fd0f2, transparent: true, opacity: 0.45, depthWrite: false, roughness: 1 });
+    var gas = tag(new THREE.Mesh(CYL, mGas), 'gas'); gas.userData.r = 3.55; gGas.add(gas);
+
+    // 5. Head with ports
+    var gHead = grp(world, 'head');
+    var mHead = mat('head', 0xb58fd0, 0xa8acb1, 0.35, 0.6);
+    cutLathe(gHead, [[0.55, 20.25], [BR, DECK], [5.6, DECK], [5.6, 23.4], [0.55, 23.4]], mHead, 'head');
+    var mPortI = mat('head', 0x7fb6d9, 0x8d9196, 0.3, 0.6), mPortE = mat('head', 0x9a9a9a, 0x6f6a66, 0.3, 0.6);
+    var portI = rod(1.05, mPortI, 'head'); setRod(portI, V(-1.85, 20.9, -0.1), V(-8.6, 22.6, -0.1)); gHead.add(portI);
+    var portE = rod(1.05, mPortE, 'head'); setRod(portE, V(1.85, 20.9, -0.1), V(8.6, 22.6, -0.1)); gHead.add(portE);
+
+    // 6. Valves
+    var gValves = grp(world, 'valves');
+    var mVI = mat('valves', 0x2d6ef0, 0xb9bec3, 0.6, 0.35), mVE = mat('valves', 0x6b7077, 0x8e8780, 0.6, 0.4), mVS = mat('valves', 0xd8dde2, 0x6a6f75, 0.5, 0.4);
+    function makeValve(x, m) {
+      var g = new THREE.Group(); gValves.add(g);
+      var head = rod(1.25, m, 'valves'); setRod(head, V(x, -0.12, 0), V(x, 0.18, 0)); g.add(head);
+      var stem = rod(0.28, m, 'valves'); setRod(stem, V(x, 0.18, 0), V(x, 6.35, 0)); g.add(stem);
+      var pts = []; for (var h = 0; h <= 120; h++) { var tt = h / 120, an = tt * Math.PI * 2 * 5; pts.push(V(x + Math.cos(an) * 0.7, 3.9 + tt * 2.0, Math.sin(an) * 0.7)); }
+      var spr = tag(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 160, 0.09, 6, false), mVS), 'valves'); spr.userData.spring = true; g.add(spr);
+      var bucket = rod(0.85, mVS, 'valves'); setRod(bucket, V(x, 5.9, 0), V(x, 6.6, 0)); g.add(bucket);
+      return { g: g, spr: spr, x: x };
+    }
+    var SEAT = 19.75, LMAX = 0.9;
+    var vIn = makeValve(-1.85, mVI), vEx = makeValve(1.85, mVE);
+
+    // 7. Camshafts
+    var gCams = grp(world, 'cams');
+    var mCam = mat('cams', 0x2bb3a3, 0x5d636a, 0.7, 0.35);
+    var lobeShape = new THREE.Shape();
+    (function () { for (var k = 0; k <= 48; k++) { var a = k / 48 * Math.PI * 2, rr = 1.0 + LMAX * Math.pow(Math.max(0, Math.cos(a / 1)), 3); var x = Math.sin(a) * rr, y = Math.cos(a) * rr; if (k === 0) lobeShape.moveTo(x, y); else lobeShape.lineTo(x, y); } })();
+    var lobeGeo = new THREE.ExtrudeGeometry(lobeShape, { depth: 1.3, bevelEnabled: false }); lobeGeo.translate(0, 0, -0.65);
+    var CAMY = DECK + 0.45 + 6.6 + 1.0; // valve top + base circle
+    function makeCam(x) {
+      var g = new THREE.Group(); g.position.set(x, CAMY, 0); gCams.add(g);
+      var sh = rod(0.5, mCam, 'cams'); setRod(sh, V(0, 0, -4), V(0, 0, 4)); g.add(sh);
+      var lobe = tag(new THREE.Mesh(lobeGeo, mCam), 'cams'); g.add(lobe);
+      return lobe;
+    }
+    var camI = makeCam(-1.85), camE = makeCam(1.85);
+
+    // 8. Spark plug
+    var gPlug = grp(world, 'plug');
+    var mPlugM = mat('plug', 0xc0503a, 0xa7adb3, 0.8, 0.3), mPlugW = mat('plug', 0xf4f4f0, 0xf4f4f0, 0.1, 0.4);
+    var plugBody = rod(0.45, mPlugM, 'plug'); setRod(plugBody, V(0, 20.05, 0), V(0, 24.6, 0)); gPlug.add(plugBody);
+    var hexN = tag(new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 0.8, 6), mPlugM), 'plug'); hexN.position.set(0, 24.2, 0); gPlug.add(hexN);
+    var ins = rod(0.42, mPlugW, 'plug'); setRod(ins, V(0, 24.6, 0), V(0, 26.0, 0)); gPlug.add(ins);
+    var sparkM = new THREE.MeshBasicMaterial({ color: 0xffd24a, transparent: true, opacity: 0.95 });
+    var spark = new THREE.Mesh(new THREE.SphereGeometry(0.9, 16, 12), sparkM); spark.position.set(0, 19.9, 0); spark.visible = false; gPlug.add(spark);
+
+    var ORDER = ['block', 'piston', 'rod', 'crank', 'head', 'valves', 'cams', 'plug'];
+    var real = false, deg = 0, running = false;
+    var GASCOL = [0x8fd0f2, 0x2d6ef0, 0xe8742a, 0x8c8f94];
+    function place() {
+      var a = ((deg % 720) + 720) % 720, th = a * Math.PI / 180;
+      var py = pinY(th), crown = py + P2C;
+      gPiston.position.set(0, py, 0);
+      gCrank.rotation.z = -th;
+      var cp = V(R * Math.sin(th), R * Math.cos(th), 0), wp = V(0, py, 0);
+      setRod(shaftR, cp, wp);
+      setRod(bigEnd, cp.clone().add(V(0, 0, -1.1)), cp.clone().add(V(0, 0, 1.1)));
+      setRod(smallEnd, wp.clone().add(V(0, 0, -1.0)), wp.clone().add(V(0, 0, 1.0)));
+      setRod(gas, V(0, crown, 0), V(0, DECK + 0.4, 0));
+      var idx = Math.floor(a / 180), col = GASCOL[idx];
+      if (idx === 2 && a > 450) col = 0xc9603a;
+      mGas.color.setHex(col); mGas.opacity = idx === 2 ? 0.7 : 0.45;
+      gGas.visible = step >= 2;
+      var li = liftAt(a, 100), le = liftAt(a, 620);
+      vIn.g.position.y = SEAT - li * LMAX; vEx.g.position.y = SEAT - le * LMAX;
+      // lobes: nose points down at the centre of each valve's opening; cams turn at half speed
+      camI.rotation.z = Math.PI - (a - 100) * Math.PI / 360;
+      camE.rotation.z = Math.PI - (a - 620) * Math.PI / 360;
+      spark.visible = step >= N && a >= 352 && a < 380;
+      showPhase(a);
+    }
+    function applyStep() {
+      ORDER.forEach(function (k, idx) { PARTS[k].forEach(function (g) { g.visible = idx < step; }); });
+      selected = null; clearGlow(); showCaption(); place();
+    }
+    function setColours() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.color.setHex(real ? m.userData.real : m.userData.col); }); }); }
+    function clearGlow() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.emissive.setHex(0); }); }); }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(500, Math.max(340, w * 1.05)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      var f = camera.aspect < 1.0 ? 1.32 : 1.05;
+      camera.position.copy(TARGET).add(CAMOFF.clone().multiplyScalar(f)); camera.lookAt(TARGET);
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener('resize', size); size();
+
+    var el = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    el.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === el) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleChain(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = el.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(world.children, true).filter(function (h) { return visibleChain(h.object) && h.object.userData.key; });
+      var solid = hits.filter(function (h) { return h.object.userData.key !== 'gas'; });
+      var hit = solid[0] || hits[0];
+      clearGlow();
+      if (!hit) { selected = null; showCaption(); return; }
+      selected = hit.object.userData.key;
+      if (MATS[selected]) MATS[selected].forEach(function (m) { m.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(); } });
+    var realBtn = $('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var crankIn = $('crank3d'), last = 0;
+    crankIn.addEventListener('input', function () {
+      running = false; $('runBtn').setAttribute('aria-pressed', 'false'); $('runBtn').textContent = 'Play engine';
+      deg = +crankIn.value; $('crank3dVal').textContent = deg; place();
+    });
+    $('runBtn').addEventListener('click', function () {
+      running = !running; this.setAttribute('aria-pressed', running ? 'true' : 'false'); this.textContent = running ? 'Pause engine' : 'Play engine';
+      if (running && step < N) { step = N; applyStep(); }
+      last = performance.now();
+    });
+    var cutIn = $('cut'), pending = false;
+    cutIn.addEventListener('input', function () {
+      $('cutVal').textContent = cutIn.value; cut = (+cutIn.value) * Math.PI / 180;
+      if (!pending) { pending = true; requestAnimationFrame(function () { pending = false; LATHES.forEach(buildLathe); }); }
+    });
+
+    var visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      var dt = Math.min(0.1, (t - last) / 1000); last = t;
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.3;
+      if (running) {
+        var rate = reduced ? 30 : 60 + (+rpm.value) / 6000 * 200; // degrees per second, slow motion
+        deg = (deg + dt * rate) % 720; crankIn.value = Math.floor(deg); $('crank3dVal').textContent = Math.floor(deg);
+        place();
+      }
+      renderer.render(scene, camera);
+    }
+    setColours(); applyStep();
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    $('stage').innerHTML = '<div class="fail">The 3D engine could not load on this device. Use the steps below: each one describes the next part. Chapter 2 shows the same engine moving in 2D.</div>';
+    ['cut', 'realBtn', 'runBtn', 'crank3d'].forEach(function (id) { $(id).disabled = true; });
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // Chapter 4: compression ratio
+  var cr = $('cr');
+  function updCr() {
+    var r = +cr.value, eff = 1 - 1 / Math.pow(r, 0.4), p = Math.pow(r, 1.3), T = 323 * Math.pow(r, 0.3) - 273;
+    $('crVal').textContent = r;
+    $('crEff').textContent = Math.round(eff * 100);
+    $('crP').textContent = Math.round(p);
+    $('crT').textContent = Math.round(T);
+    $('crTop').setAttribute('width', (340 / r).toFixed(1));
+    var st = $('crNote');
+    if (r < 8) { st.className = 'status bad'; st.textContent = 'Weak squeeze. Safe from knock, but a lot of the fire is wasted. Old engines from the 1960s were around here.'; }
+    else if (r <= 12.5) { st.className = 'status ok'; st.textContent = 'Where most modern petrol cars sit: about 10 to 12.5. A good balance of efficiency and no knock on normal petrol.'; }
+    else if (r <= 14) { st.className = 'status bad'; st.textContent = 'Very high for petrol. Only a few special engines manage this, with clever cooling, direct injection and high-octane fuel. Otherwise: knock.'; }
+    else { st.className = 'status bad'; st.textContent = 'Knock! Petrol would explode by itself. Diesel engines use 15 to 20 on purpose: they have no spark plug. The squeeze heat itself lights the fuel.'; }
+  }
+  cr.addEventListener('input', updCr); updCr();
+
+  // Chapter 5: energy split (rough, in line with US DOE 12 to 30%)
+  var SPLIT = {
+    city: [['Hot exhaust gas', 29, '#B8432F'], ['Radiator and engine heat', 27, '#E8742A'], ['Friction and pumping air', 14, '#C98400'], ['Idling at signals', 12, '#8C97A3'], ['Gearbox, AC, alternator', 6, '#5B636C'], ['Moves the car', 12, '#2E7D4F']],
+    hwy: [['Hot exhaust gas', 32, '#B8432F'], ['Radiator and engine heat', 28, '#E8742A'], ['Friction and pumping air', 9, '#C98400'], ['Idling at signals', 0, '#8C97A3'], ['Gearbox, AC, alternator', 6, '#5B636C'], ['Moves the car', 25, '#2E7D4F']]
+  };
+  var ebar = $('ebar'), eleg = $('elegend');
+  SPLIT.city.forEach(function (s) {
+    var sp = document.createElement('span'); sp.style.background = s[2]; ebar.appendChild(sp);
+    var li = document.createElement('li'); li.innerHTML = '<i style="background:' + s[2] + '"></i><span>' + s[0] + '</span><b></b>'; eleg.appendChild(li);
+  });
+  function showDrive(k) {
+    var d = SPLIT[k];
+    ebar.querySelectorAll('span').forEach(function (sp, i) { sp.style.width = d[i][1] + '%'; });
+    eleg.querySelectorAll('li').forEach(function (li, i) { li.querySelector('b').textContent = 'Rs ' + d[i][1] * 10; });
+    $('eNote').innerHTML = k === 'city' ?
+      'In city traffic, only about <b>Rs 120</b> of your Rs 1,000 moves the car. Stop-start and idling waste a lot. A car standing at a long signal with the engine on gets zero km per litre.' :
+      'At a steady 70 km/h, about <b>Rs 250</b> moves the car. The engine runs near its best speed and nothing is wasted on stopping. This is why highway mileage is better.';
+  }
+  pressGroup('#drive', function (b) { showDrive(b.getAttribute('data-d')); });
+  showDrive('city');
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tagEl = ans.querySelector('.mark') || document.createElement('span');
+        tagEl.className = 'mark ' + (ok ? 'right' : 'wrong'); tagEl.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tagEl, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl4-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl4-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = $('explainBox');
+  box.value = store.get('dl4-explain') || '';
+  box.addEventListener('input', function () { store.set('dl4-explain', box.value); });
+})();
+</script>
+</body>
+</html>
