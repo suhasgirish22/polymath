@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 5: Gearbox and clutch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+/* Day 5 extras */
+.plotlab { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+.hot { color: var(--warn); font-weight: 700; }
+.gears { display: flex; flex-wrap: wrap; gap: 6px; }
+.gears button { font-family: var(--font-mono); font-weight: 600; min-width: 46px; }
+.autos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.autos button { text-align: left; }
+@media (prefers-reduced-motion: reduce) { .needle { transition: none !important; } }
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 5 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>Why can't your car start in 5th gear?</h1>
+  <p class="lead">Today you will mesh gears with your finger, build a 5-speed gearbox and clutch in 3D, and find out why the clutch pedal exists at all.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">You are first at a red light in a small manual hatchback. The light turns green. By mistake, the lever is in <b>5th gear</b>, not 1st. You let the clutch up as usual.</p>
+  <p class="say"><b>What happens?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">The car moves off, just a bit slowly</button>
+    <button type="button" data-a="0">The car shoots forward very fast</button>
+    <button type="button" data-a="1">The car jerks and the engine stops</button>
+    <button type="button" data-a="0">The gearbox breaks</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>A small gear turns a big gear</h2>
+  <p>Think of your bicycle on a steep road. You pick the biggest gear at the back. Your legs spin fast, the cycle goes slowly, but the pedals feel <b>easy</b>. On a flat road you pick a small gear. Now each push moves you far, but it feels heavy.</p>
+  <p>That is the whole secret. Gears <b>swap speed for twist</b>. You cannot get more of both.</p>
+  <p>Below, the small gear has 12 teeth. It is the engine side. Give the big gear more teeth and watch:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 280" role="img" aria-labelledby="g1Title">
+      <title id="g1Title">A small 12-tooth gear driving a bigger gear. Each has a dot so you can count turns.</title>
+      <g id="g1Small"></g>
+      <g id="g1Big"></g>
+      <text x="60" y="276" text-anchor="middle" class="plotlab">engine side</text>
+      <text id="g1BigLab" x="250" y="276" text-anchor="middle" class="plotlab">wheel side</text>
+    </svg>
+  </div>
+  <label for="teeth" class="ctrl">
+    <span><b>Teeth on the big gear:</b> <span id="teethVal" class="mono">42</span></span>
+    <input id="teeth" type="range" min="12" max="48" step="1" value="42">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Gear ratio</div><div class="big"><span id="g1R">3.5</span> : 1</div></div>
+    <div class="tile"><div class="small">Twist at the big gear</div><div class="big">&times; <span id="g1T">3.5</span></div></div>
+    <div class="tile"><div class="small">Speed of the big gear</div><div class="big">&divide; <span id="g1S">3.5</span></div></div>
+  </div>
+  <p id="g1Note" class="note"></p>
+  <p>The maths is simple. <b>Ratio = big teeth &divide; small teeth.</b> 42 &divide; 12 = 3.5. The small gear must turn 3.5 times to turn the big one once. In return, the big gear twists 3.5 times harder. A long spanner works the same way: more twist, but your hand moves further.</p>
+</section>
+
+<!-- CHAPTER 2 -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>The engine has a happy zone</h2>
+  <p>On Day 4 you saw the engine spin. It has a problem. Below about <b>1,000 rpm</b> the bangs are too far apart. It shakes and stops. Above about <b>6,000 rpm</b> a computer cuts the fuel to save it.</p>
+  <p>But your wheels need everything from 0 to about 1,000 turns a minute. At a signal they are still. At 100 km/h they turn about 850 times a minute.</p>
+  <p>So the gearbox keeps the engine happy while the wheels do whatever they need. Pick a gear, a speed and a road. Watch the rev needle:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 200" role="img" aria-labelledby="g2Title">
+      <title id="g2Title">A rev meter with coloured zones on the left, and a car on a road with the chosen slope on the right</title>
+      <g id="g2Arcs"></g>
+      <line id="g2Needle" class="needle" x1="90" y1="120" x2="90" y2="62" stroke="var(--ink)" stroke-width="4" stroke-linecap="round" style="transform-origin:90px 120px;transition:transform .3s"/>
+      <circle cx="90" cy="120" r="7" fill="var(--ink)"/>
+      <text id="g2Rpm" x="90" y="160" text-anchor="middle" font-family="var(--font-display)" font-size="20" font-weight="800" fill="var(--ink)">2,000</text>
+      <text x="90" y="176" text-anchor="middle" class="plotlab">engine rpm</text>
+      <g id="g2Hill">
+        <line x1="190" y1="170" x2="350" y2="170" stroke="var(--muted)" stroke-width="3" stroke-linecap="round"/>
+        <g id="g2Car">
+          <rect x="245" y="146" width="50" height="16" rx="5" fill="var(--accent)"/>
+          <rect x="255" y="136" width="28" height="13" rx="4" fill="var(--accent)"/>
+          <circle cx="257" cy="164" r="6" fill="var(--rubber)"/>
+          <circle cx="285" cy="164" r="6" fill="var(--rubber)"/>
+        </g>
+      </g>
+      <text id="g2Road" x="270" y="194" text-anchor="middle" class="plotlab">flat road</text>
+    </svg>
+  </div>
+  <div class="gears" id="labGear" role="group" aria-label="Gear">
+    <button type="button" data-g="1">1st</button><button type="button" data-g="2">2nd</button><button type="button" data-g="3" aria-pressed="true">3rd</button><button type="button" data-g="4">4th</button><button type="button" data-g="5">5th</button>
+  </div>
+  <label for="kmh" class="ctrl">
+    <span><b>Car speed:</b> <span id="kmhVal" class="mono">40</span> km/h</span>
+    <input id="kmh" type="range" min="5" max="120" step="1" value="40">
+  </label>
+  <div class="row" id="labSlope">
+    <button type="button" data-s="0" aria-pressed="true">Flat road</button>
+    <button type="button" data-s="4">Flyover (4%)</button>
+    <button type="button" data-s="8">Ghat road (8%)</button>
+    <button type="button" data-s="15">Basement ramp (15%)</button>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Push the wheels can give</div><div class="big"><span id="g2Have">0</span> kg</div></div>
+    <div class="tile"><div class="small">Push the road needs</div><div class="big"><span id="g2Need">0</span> kg</div></div>
+    <div class="tile"><div class="small">Best gear here</div><div class="big" id="g2Best">3rd</div></div>
+  </div>
+  <p id="g2Status" class="status ok"></p>
+  <p class="small">Numbers for a typical 1.2 litre hatchback with 2 people: 1,100 kg, engine twist up to 113 Nm, gears 3.62, 1.86, 1.31, 1.00, 0.76, then a final gear of 4.12. Push needed = hill + tyre rolling + air. Drawn hill is steeper than real.</p>
+  <details>
+    <summary>Now solve the puzzle: try 5th gear at 5 km/h</summary>
+    <p>The engine would need to turn only about 140 times a minute. That is far below its happy zone. In 5th, the engine also gives less than one fifth of the push it gives in 1st. So the clutch drags the engine down until it stalls.</p>
+  </details>
+</section>
+
+<!-- CHAPTER 3: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Build a 5-speed gearbox, part by part</h2>
+  <p>Here is the big surprise. In a normal manual gearbox, <b>all the gears touch all the time</b>. Nothing slides in and out. So how does it choose one? Build it and see.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn it. Imagine the car is on a stand with the wheels in the air.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <div class="row">
+    <button type="button" id="clutchBtn" aria-pressed="false">Press clutch</button>
+    <button type="button" id="runBtn" aria-pressed="true">Pause</button>
+  </div>
+  <div class="gears" id="boxGear" role="group" aria-label="Choose a gear">
+    <button type="button" data-g="0" aria-pressed="true">N</button><button type="button" data-g="1">1st</button><button type="button" data-g="2">2nd</button><button type="button" data-g="3">3rd</button><button type="button" data-g="4">4th</button><button type="button" data-g="5">5th</button>
+  </div>
+  <p id="boxStatus" class="status ok">Neutral. Press the clutch, then pick a gear.</p>
+  <div class="readouts">
+    <div class="tile"><div class="small">Engine</div><div class="big">2,000 rpm</div></div>
+    <div class="tile"><div class="small">Input shaft</div><div class="big"><span id="bIn">2,000</span> rpm</div></div>
+    <div class="tile"><div class="small">Output shaft</div><div class="big"><span id="bOut">0</span> rpm</div></div>
+    <div class="tile"><div class="small">Car speed on a road</div><div class="big"><span id="bKmh">0</span> km/h</div></div>
+  </div>
+  <label for="explode" class="ctrl">
+    <span class="small">Pull it apart: <span id="explodeVal" class="mono">0</span>%</span>
+    <input id="explode" type="range" min="0" max="100" step="5" value="0">
+  </label>
+  <p class="small">The 3D gearbox turns in slow motion. The colours are only for learning. Real gearbox parts are grey steel. Simplified: real gearboxes use slanted (helical) teeth, and a reverse gear is left out.</p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>The clutch: joining a spinning thing to a still thing</h2>
+  <p>Rub your palms together. Press lightly and they slide. Press hard and they grip and move together. A clutch is two big "palms" made of metal and friction material.</p>
+  <p>One palm is the <b>flywheel</b>. It always spins with the engine. The other is the <b>clutch plate</b>, joined to the gearbox. A strong spring squeezes them together with about <b>400 kg</b>.</p>
+  <p>Press the pedal and the spring is pulled back. The plates part. Now you can stop the car, or change gear, while the engine keeps running. Lift your foot slowly, as at a signal:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 200" role="img" aria-labelledby="c1Title">
+      <title id="c1Title">Side view of the flywheel, the clutch plate and the pressure plate. The gap closes as you lift the pedal. The plate glows when it slips and gets hot.</title>
+      <rect x="40" y="20" width="26" height="160" rx="4" fill="var(--steel)"/>
+      <text x="53" y="196" text-anchor="middle" class="plotlab">flywheel</text>
+      <rect x="10" y="94" width="30" height="12" fill="var(--steel)"/>
+      <text x="20" y="88" text-anchor="middle" class="plotlab">engine</text>
+      <g id="c1Disc"><rect x="72" y="34" width="12" height="132" rx="3" fill="var(--warn)" id="c1DiscR"/><rect x="72" y="34" width="12" height="132" rx="3" fill="#FFD24A" id="c1Glow" opacity="0"/></g>
+      <g id="c1Plate"><rect x="90" y="36" width="20" height="128" rx="3" fill="var(--accent)"/><path d="M110,40 L150,90 L150,110 L110,160" fill="none" stroke="var(--accent)" stroke-width="5"/></g>
+      <rect x="78" y="94" width="230" height="12" fill="var(--water)"/>
+      <text x="250" y="88" text-anchor="middle" class="plotlab">to gearbox</text>
+      <text id="c1PlateLab" x="168" y="40" class="plotlab">pressure plate and spring</text>
+      <text x="168" y="56" class="plotlab">clutch plate (red) between</text>
+      <text id="c1Gap" x="168" y="150" font-family="var(--font-display)" font-size="14" font-weight="800" fill="var(--ink)">Plates apart</text>
+    </svg>
+  </div>
+  <label for="pedal" class="ctrl">
+    <span><b>Lift your foot:</b> <span id="pedalVal" class="mono">0</span>% up</span>
+    <input id="pedal" type="range" min="0" max="100" step="1" value="0">
+  </label>
+  <label for="crpm" class="ctrl">
+    <span><b>Accelerator, engine at:</b> <span id="crpmVal" class="mono">1,500</span> rpm</span>
+    <input id="crpm" type="range" min="800" max="4000" step="100" value="1500">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Clutch grip</div><div class="big"><span id="cGrip">0</span> Nm</div></div>
+    <div class="tile"><div class="small">Push on the car, in 1st</div><div class="big"><span id="cPush">0</span> kg</div></div>
+    <div class="tile"><div class="small">Heat in the clutch</div><div class="big"><span id="cHeat">0</span> kW</div></div>
+  </div>
+  <p id="cStatus" class="status ok"></p>
+  <p>Where does that grip come from? Grip = friction (0.3) &times; spring force (4,000 N) &times; average radius (7.5 cm) &times; 2 faces. That is about <b>180 Nm</b>. The engine makes at most 113 Nm. So a healthy clutch never slips once your foot is off.</p>
+  <p>The point where the plates just start to grip is the <b>bite point</b>. While they slip, the engine's work becomes heat. A few seconds is fine. Holding a car on a slope with the clutch for half a minute is not. That is the burnt smell you sometimes notice near flyovers.</p>
+  <p class="note"><b>Why the gears need it too:</b> when you change gear, the collar inside must catch a gear that spins at a different speed. Pressing the clutch frees the input shaft, and a small brass cone (the <b>synchro</b>) rubs the speeds equal. <span class="hot">Without it:</span> you hear a loud grinding crunch.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Cars that change gear for you</h2>
+  <p>More and more Indian cars have two pedals, not three. They still need gears, because the engine still has a happy zone. Something else does the shifting. Tap each type:</p>
+  <div class="autos" id="autos">
+    <button type="button" data-k="amt" aria-pressed="true">AMT</button>
+    <button type="button" data-k="at">Torque converter</button>
+    <button type="button" data-k="cvt">CVT</button>
+    <button type="button" data-k="dct">DCT</button>
+  </div>
+  <div class="explain" id="autoOut" aria-live="polite" style="background:var(--bg);border-radius:10px;padding:14px;min-height:7em"></div>
+  <h3>A gearbox with no steps</h3>
+  <p>A <b>CVT</b> has no gears at all. A steel belt runs between two pulleys shaped like cones. Each pulley can widen or narrow, so the belt rides on a small circle or a big circle. Slide it:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 200" role="img" aria-labelledby="cvTitle">
+      <title id="cvTitle">Two pulleys joined by a belt. The engine pulley shrinks while the wheel pulley grows, changing the ratio smoothly.</title>
+      <path id="cvBelt" fill="none" stroke="var(--rubber)" stroke-width="6" stroke-linejoin="round"/>
+      <circle id="cvA" cx="90" cy="100" r="40" fill="var(--accent)" opacity="0.85"/>
+      <circle id="cvB" cx="270" cy="100" r="50" fill="var(--water)" opacity="0.85"/>
+      <line id="cvAs" x1="90" y1="100" x2="90" y2="65" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+      <line id="cvBs" x1="270" y1="100" x2="270" y2="55" stroke="var(--ink)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="90" cy="100" r="6" fill="var(--ink)"/><circle cx="270" cy="100" r="6" fill="var(--ink)"/>
+      <text x="90" y="194" text-anchor="middle" class="plotlab">engine pulley</text>
+      <text x="270" y="194" text-anchor="middle" class="plotlab">wheel pulley</text>
+    </svg>
+  </div>
+  <label for="cvt" class="ctrl">
+    <span><b>Ratio:</b> <span id="cvtVal" class="mono">1.00</span> : 1</span>
+    <input id="cvt" type="range" min="0.45" max="2.5" step="0.01" value="1">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Engine stays at</div><div class="big">2,500 rpm</div></div>
+    <div class="tile"><div class="small">Car speed</div><div class="big"><span id="cvKmh">71</span> km/h</div></div>
+  </div>
+  <p class="small">The engine can sit at its best rpm while the car speeds up smoothly. That is why a CVT feels like one long gear.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"Resting your left foot lightly on the clutch pedal while driving does no harm."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Even light pressure can ease the spring a little, so the plates slip and wear. It also keeps the release bearing working all the time. Rest your foot on the floor or the dead pedal.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"On a slope, hold the car still at the bite point. It saves the brakes."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. The plates slip the whole time and turn engine work into heat (Chapter 4). Brakes are cheap to fix. A clutch is a big job. Use the foot brake or handbrake, and many new cars have hill-hold.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Going downhill in neutral saves a lot of petrol."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False for modern cars. Lift off the accelerator while in gear, and the computer stops the petrol fully: the wheels keep the engine turning. In neutral, the engine burns petrol just to idle. You also lose engine braking (Days 2 and 4).</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/wCu9W9xNwtI" title="Manual Transmission, How it works?, by Lesics" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=wCu9W9xNwtI" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>Manual Transmission, How it works?</b><br><span style="color:#C3CAD1;font-size:.9rem">Lesics (Learn Engineering), on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 3. Pause when the collar first slides. Say which gear is now locked before he does. Then watch how reverse adds one extra gear in between.</span>
+  </a>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/devo3kdSPQY" title="Clutch, How does it work?, by Lesics" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=devo3kdSPQY" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>Clutch, How does it work?</b><br><span style="color:#C3CAD1;font-size:.9rem">Lesics (Learn Engineering), on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 4. Pause when the diaphragm spring appears. Notice how pushing its centre lifts the outer edge away from the plate.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four things to try in your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>As a passenger, or when safe: at a steady 40 km/h, note the rpm in 3rd and in 4th. Divide the two. You should get close to 1.3, the ratio between those gears.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Manual car, empty flat parking lot: put it in 1st and lift the clutch very slowly, no accelerator. Feel the exact point where the car starts to creep. That is your bite point.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>At a long red light, shift to neutral and take your foot off the clutch. Check yourself once on every drive: is your left foot resting on the pedal?</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>If you drive or ride in an automatic, find out its type from the brochure or manual: AMT, torque converter, CVT or DCT. Does it feel like Chapter 5 said?</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. 1st gear gives you more of what, and less of what?</summary><p>More twist (push at the wheels), less speed. The engine turns about 15 times for one turn of the wheel in 1st, but only about 3 times in 5th.</p></details>
+  <details><summary>2. In a manual gearbox, how does it choose one gear if all the gears always touch?</summary><p>The gears on the output shaft spin freely. A sliding collar, moved by the fork and lever, locks just one of them to the shaft. Only that pair passes the power.</p></details>
+  <details><summary>3. Why does the engine stall if you lift the clutch too fast at a signal?</summary><p>The wheels are still. Once the clutch grips fully, it tries to stop the engine too. At low rpm the engine cannot twist hard enough to get the car moving, so it is pulled below its happy zone and stops.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 4, The petrol engine):</b></p>
+  <details><summary>4. Only one stroke of four makes power. What keeps the crank turning between bangs?</summary><p>The heavy flywheel, and the other cylinders. It is the same flywheel the clutch grips today.</p></details>
+  <details><summary>5. What is knock, and what does the octane number tell you?</summary><p>Knock is the squeezed mix exploding by itself before or apart from the spark. Octane tells you how well the petrol resists it. It is not extra energy.</p></details>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: why the engine needs gears, what a low gear gives you, how the gearbox chooses a gear, and what the clutch does.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. An engine only works well between about 1,000 and 6,000 rpm..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Day 4, engine:</b> the flywheel that smooths the bangs is also the clutch's first "palm". The rpm limits you saw there are why gears exist.</li>
+    <li><b>Physics:</b> a gear is a lever that keeps turning. Twist = force &times; radius, the idea Archimedes used for levers over 2,000 years ago.</li>
+    <li><b>Day 3, steering:</b> the differential inside the final drive lets the outer wheel turn faster than the inner wheel on a turn.</li>
+    <li><b>Tomorrow, EVs and batteries:</b> an electric motor gives full twist from 0 rpm and spins past 10,000 rpm. So most EVs have one fixed gear, about 9 : 1, and no clutch at all.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Typical 5-speed hatchback, final gear 4.12, at 2,000 rpm</caption>
+        <thead><tr><th>Gear</th><th>Ratio</th><th>Engine turns per wheel turn</th><th>Speed at 2,000 rpm</th></tr></thead>
+        <tbody>
+          <tr><td>1st</td><td class="mono">3.62</td><td class="mono">14.9</td><td class="mono">16 km/h</td></tr>
+          <tr><td>2nd</td><td class="mono">1.86</td><td class="mono">7.7</td><td class="mono">31 km/h</td></tr>
+          <tr><td>3rd</td><td class="mono">1.31</td><td class="mono">5.4</td><td class="mono">43 km/h</td></tr>
+          <tr><td>4th</td><td class="mono">1.00</td><td class="mono">4.1</td><td class="mono">57 km/h</td></tr>
+          <tr><td>5th</td><td class="mono">0.76</td><td class="mono">3.1</td><td class="mono">75 km/h</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>Gear ratio:</b> driven teeth &divide; driving teeth. Above 1 = slower and stronger. Below 1 (overdrive) = faster than the engine.</li>
+      <li><b>Final drive:</b> one more fixed gear pair before the wheels, usually about 3.5 to 4.5 in small cars. Total = gear ratio &times; final drive.</li>
+      <li><b>Synchromesh:</b> brass cone rings that match the speed of the collar and gear before they lock. Almost all car forward gears have it.</li>
+      <li><b>Reverse:</b> an extra small gear (idler) sits between two gears and flips the direction. Many cars have no synchro on reverse, so stop fully first.</li>
+      <li><b>Clutch parts:</b> flywheel, clutch plate (friction disc), pressure plate with diaphragm spring, release bearing. Worked by a cable or by fluid.</li>
+      <li><b>Clutch life:</b> varies a lot with driving. Heavy city traffic and riding the clutch wear it out far sooner.</li>
+      <li><b>Slipping clutch:</b> engine rpm jumps but the car does not speed up, often in a high gear on a hill. Get it checked.</li>
+      <li><b>Automatics in India:</b> AMT (cheap, a robot works a normal gearbox), torque converter (smooth, oil coupling), CVT (belt and cones, no steps), DCT (two clutches, very fast shifts).</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="004-petrol-engine.html">&larr; Day 4: The petrol engine</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 6, How EVs and batteries work (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  function press(sel, attr, cb) {
+    var bs = document.querySelectorAll(sel + ' button[' + attr + ']');
+    bs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (cb(b) === false) return;
+        bs.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+    return bs;
+  }
+  function setPressed(sel, attr, val) {
+    document.querySelectorAll(sel + ' button[' + attr + ']').forEach(function (x) { x.setAttribute('aria-pressed', x.getAttribute(attr) === String(val) ? 'true' : 'false'); });
+  }
+
+  // Progress bar
+  var bar = $('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = $('guessOut');
+  press('#guess', 'data-a', function (b) {
+    var ok = b.getAttribute('data-a') === '1';
+    guessOut.hidden = false;
+    guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+      'The car jerks and the engine <b>stalls</b>. 5th gear wants the car to already be doing about 55 km/h before the engine is happy. And it gives the wheels only about one fifth of the push of 1st gear. If you slip the clutch a lot, the car may crawl, but the clutch gets very hot. Chapter 2 lets you try it.';
+  });
+
+  // Shared car numbers
+  var RATIOS = [0, 3.62, 1.86, 1.31, 1.00, 0.76], FD = 4.12, CIRC = 1.95, RW = 0.31, EFF = 0.9, MASS = 1100;
+  var GNAME = ['N', '1st', '2nd', '3rd', '4th', '5th'];
+  function torque(rpm) { var x = (rpm - 4200) / 4800; return Math.max(0, 113 * (1 - x * x)); }
+  function kmhFrom(engRpm, g) { return engRpm / (RATIOS[g] * FD) * CIRC * 60 / 1000; }
+
+  // ---------- Chapter 1: two gears ----------
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function gearPath(n, m) {
+    var r = m * n / 2, ra = r + m, rf = r - 1.25 * m, p = Math.PI / n, d = '';
+    for (var k = 0; k < n; k++) {
+      var a = 2 * Math.PI * k / n;
+      var pts = [[rf, a - p], [rf, a - 0.55 * p], [ra, a - 0.3 * p], [ra, a + 0.3 * p], [rf, a + 0.55 * p]];
+      pts.forEach(function (q, i) { d += (k === 0 && i === 0 ? 'M' : 'L') + (q[0] * Math.cos(q[1])).toFixed(2) + ',' + (q[0] * Math.sin(q[1])).toFixed(2); });
+    }
+    return d + 'Z';
+  }
+  function drawGear(g, n, m, col) {
+    while (g.firstChild) g.removeChild(g.firstChild);
+    var r = m * n / 2;
+    var p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', gearPath(n, m)); p.setAttribute('fill', col); g.appendChild(p);
+    var c = document.createElementNS(SVGNS, 'circle'); c.setAttribute('r', Math.max(5, r * 0.25)); c.setAttribute('fill', 'var(--surface)'); g.appendChild(c);
+    var dot = document.createElementNS(SVGNS, 'circle'); dot.setAttribute('cx', 0); dot.setAttribute('cy', -(r * 0.62)); dot.setAttribute('r', 5); dot.setAttribute('fill', 'var(--warn)'); g.appendChild(dot);
+  }
+  var M1 = 5, NS = 12, g1s = $('g1Small'), g1b = $('g1Big'), teeth = $('teeth'), g1a = 0, g1n = 42;
+  drawGear(g1s, NS, M1, 'var(--accent)');
+  function setTeeth() {
+    g1n = +teeth.value; var r = g1n / NS;
+    drawGear(g1b, g1n, M1, 'var(--water)');
+    $('g1BigLab').setAttribute('x', (60 + M1 * NS / 2 + M1 * g1n / 2).toFixed(0));
+    $('teethVal').textContent = g1n;
+    ['g1R', 'g1T', 'g1S'].forEach(function (id) { $(id).textContent = r.toFixed(r % 1 ? 2 : 0).replace(/0$/, '').replace(/\.$/, ''); });
+    $('g1Note').textContent = g1n === NS ? 'Same size: same speed, same twist. Gears only help when the sizes differ.' :
+      r < 2 ? 'A small change. Like a car’s 3rd or 4th gear: the wheels turn nearly as fast as the engine.' :
+      r < 3 ? 'Like 2nd gear. A good mix of push and speed for city roads.' :
+      'Like 1st gear: the wheel side twists about ' + r.toFixed(1) + ' times harder. Great for starting from a stop or climbing a ramp, but very slow.';
+    drawG1();
+  }
+  function drawG1() {
+    var rs = M1 * NS / 2, rb = M1 * g1n / 2, cx2 = 60 + rs + rb;
+    var deg = g1a * 180 / Math.PI;
+    var phase = g1n % 2 === 0 ? 180 / g1n : 0;
+    g1s.setAttribute('transform', 'translate(60,135) rotate(' + deg.toFixed(2) + ')');
+    g1b.setAttribute('transform', 'translate(' + cx2.toFixed(1) + ',135) rotate(' + (phase - deg * NS / g1n).toFixed(2) + ')');
+  }
+  teeth.addEventListener('input', setTeeth); setTeeth();
+  var g1Vis = true, g1Last = 0;
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { g1Vis = en[0].isIntersecting; }).observe(g1s.ownerSVGElement);
+  function g1Loop(t) {
+    requestAnimationFrame(g1Loop);
+    var dt = Math.min(0.1, (t - g1Last) / 1000); g1Last = t;
+    if (!g1Vis || reduced) return;
+    g1a += dt * 2.4; drawG1();
+  }
+  requestAnimationFrame(g1Loop);
+
+  // ---------- Chapter 2: gear lab ----------
+  var labG = 3, slope = 0, kmh = $('kmh');
+  function arc(cx, cy, r, a0, a1) {
+    var p0 = [cx + r * Math.sin(a0), cy - r * Math.cos(a0)], p1 = [cx + r * Math.sin(a1), cy - r * Math.cos(a1)];
+    return 'M' + p0[0].toFixed(1) + ',' + p0[1].toFixed(1) + ' A' + r + ',' + r + ' 0 ' + (a1 - a0 > Math.PI ? 1 : 0) + ' 1 ' + p1[0].toFixed(1) + ',' + p1[1].toFixed(1);
+  }
+  var RMAX = 7000, AMIN = -2.2, ASPAN = 4.4;
+  function rpmAng(r) { return AMIN + Math.min(1, Math.max(0, r / RMAX)) * ASPAN; }
+  [[0, 900, 'var(--warn)'], [900, 1500, 'var(--accent)'], [1500, 4800, 'var(--good)'], [4800, 6200, 'var(--accent)'], [6200, 7000, 'var(--warn)']].forEach(function (z) {
+    var p = document.createElementNS(SVGNS, 'path');
+    p.setAttribute('d', arc(90, 120, 62, rpmAng(z[0]), rpmAng(z[1])));
+    p.setAttribute('stroke', z[2]); p.setAttribute('stroke-width', 12); p.setAttribute('fill', 'none');
+    $('g2Arcs').appendChild(p);
+  });
+  [0, 2000, 4000, 6000].forEach(function (v) {
+    var a = rpmAng(v), t = document.createElementNS(SVGNS, 'text');
+    t.setAttribute('x', (90 + 82 * Math.sin(a)).toFixed(1)); t.setAttribute('y', (124 - 82 * Math.cos(a)).toFixed(1));
+    t.setAttribute('text-anchor', 'middle'); t.setAttribute('class', 'plotlab'); t.textContent = v / 1000;
+    $('g2Arcs').appendChild(t);
+  });
+  function labCalc(g, v, s) {
+    var ms = v / 3.6, rpm = ms / CIRC * 60 * RATIOS[g] * FD;
+    var th = Math.atan(s / 100);
+    var need = MASS * 9.81 * (Math.sin(th) + 0.012 * Math.cos(th)) + 0.5 * 1.2 * 0.7 * ms * ms;
+    var have = (rpm >= 800 && rpm <= 6200) ? torque(rpm) * RATIOS[g] * FD * EFF / RW : 0;
+    return { rpm: rpm, need: need, have: have };
+  }
+  function updLab() {
+    var v = +kmh.value, c = labCalc(labG, v, slope);
+    $('kmhVal').textContent = v;
+    $('g2Rpm').textContent = fmt(c.rpm);
+    $('g2Needle').style.transform = 'rotate(' + (rpmAng(c.rpm) * 180 / Math.PI).toFixed(1) + 'deg)';
+    $('g2Have').textContent = fmt(c.have / 9.81);
+    $('g2Need').textContent = fmt(c.need / 9.81);
+    var best = 0;
+    for (var g = 5; g >= 1; g--) { var b = labCalc(g, v, slope); if (b.rpm >= 1300 && b.rpm <= 5500 && b.have >= b.need * 1.15) { best = g; break; } }
+    if (!best) for (g = 1; g <= 5; g++) { b = labCalc(g, v, slope); if (b.rpm >= 900 && b.rpm <= 6200 && b.have >= b.need) { best = g; break; } }
+    $('g2Best').textContent = best ? GNAME[best] : 'None';
+    var st = $('g2Status');
+    if (c.rpm < 900) { st.className = 'status bad'; st.textContent = 'Only ' + fmt(c.rpm) + ' rpm. The engine shudders and stalls. Change down to a lower gear.'; }
+    else if (c.rpm > 6200) { st.className = 'status bad'; st.textContent = fmt(c.rpm) + ' rpm. Too fast for this gear. The computer cuts the fuel. Change up.'; }
+    else if (c.have < c.need) { st.className = 'status bad'; st.textContent = 'Not enough push. The car slows down even with the pedal flat. Change down.'; }
+    else {
+      var a = (c.have - c.need) / MASS, t100 = a > 0 ? (10 / 3.6) / a : 0;
+      st.className = 'status ok';
+      st.textContent = 'Fine. Pedal flat, the car could gain 10 km/h in about ' + (t100 < 1 ? 'under 1' : t100.toFixed(1)) + ' s.' + (c.rpm < 1500 ? ' But the engine is lugging. It may judder.' : '') + (labG < best ? ' A higher gear would save petrol here.' : '');
+    }
+    var vis = Math.atan(slope / 100) * 2;
+    $('g2Hill').setAttribute('transform', 'rotate(' + (-vis * 180 / Math.PI).toFixed(1) + ' 270 170)');
+    $('g2Road').textContent = slope ? slope + '% slope (drawn steeper)' : 'flat road';
+  }
+  press('#labGear', 'data-g', function (b) { labG = +b.getAttribute('data-g'); updLab(); });
+  press('#labSlope', 'data-s', function (b) { slope = +b.getAttribute('data-s'); updLab(); });
+  kmh.addEventListener('input', updLab); updLab();
+
+  // ---------- Chapter 3: 3D gearbox ----------
+  var STEPS = [
+    { key: 'flywheel', t: 'Flywheel: the engine’s spinning plate', d: 'A heavy steel disc bolted to the end of the crankshaft from Day 4. It spins whenever the engine runs. The ring of teeth around it is for the starter motor.', w: 'Without it: the engine would run jerky between bangs, and the clutch would have nothing to grip.' },
+    { key: 'disc', t: 'Clutch plate: the friction disc', d: 'A thin disc, about 19 cm across, with friction material on both faces, like a brake pad. Its centre slides on the gearbox input shaft.', w: 'Without it: there is nothing that can grip the flywheel smoothly.' },
+    { key: 'pplate', t: 'Pressure plate and spring: the squeeze', d: 'A heavy ring pushed by a cone-shaped diaphragm spring. It squeezes the clutch plate onto the flywheel with about 400 kg. Press "Press clutch": the release bearing pushes the spring centre, and the plate pulls back.', w: 'Without it: the clutch plate would slip and the car would not move.' },
+    { key: 'inshaft', t: 'Input shaft: five gears, all fixed', d: 'The shaft turned by the clutch plate. Its five gears are fixed to it, small for 1st, big for 5th. Press the clutch and watch it slow down while the flywheel keeps spinning.', w: '' },
+    { key: 'outgears', t: 'Output shaft: five partner gears, spinning free', d: 'Each fixed gear always meshes with a partner gear. The partners sit on bearings, so they spin freely around the output shaft. Look: all five spin, but the shaft in the middle is still.', w: 'Without free spinning: all five pairs would try to drive the shaft at once and lock solid.' },
+    { key: 'collars', t: 'Collars: lock one gear to the shaft', d: 'Green sliding collars turn with the output shaft. Slide one sideways and its teeth catch the side of a gear. Now that gear drives the shaft. Try it: press the clutch, then pick 1st.', w: 'Without them: no gear is ever connected. You are stuck in neutral.' },
+    { key: 'forks', t: 'Forks and gear lever: your hand inside', d: 'Each collar sits in a fork on a rail. Your lever moves one rail (in most small cars, through two cables). Watch the lever lean as you pick gears.', w: 'Without them: there is no way to slide the collars from the driver’s seat.' },
+    { key: 'final', t: 'Final drive and differential: to the wheels', d: 'A small gear on the output shaft turns a big ring gear 4.12 times slower. Inside the ring, the differential sends power left and right, and lets the outer wheel turn faster on a turn.', w: 'Without it: the wheels would spin about 4 times too fast for the engine to push.' }
+  ];
+  var N = STEPS.length;
+  var INFO = {
+    flywheel: 'Flywheel: always spins with the engine. First half of the clutch.',
+    disc: 'Clutch plate: friction disc squeezed between flywheel and pressure plate.',
+    pplate: 'Pressure plate: spring squeezes the plate. The pedal pulls it back.',
+    inshaft: 'Input shaft: driven by the clutch. Its gears are fixed to it.',
+    outgears: 'Output gears: always meshed, spin freely until a collar locks one.',
+    outshaft: 'Output shaft: turns only when a collar locks a gear to it.',
+    collars: 'Collars: slide sideways to lock one gear to the output shaft.',
+    forks: 'Forks and lever: move the collars when you move the gear lever.',
+    final: 'Final drive: slows the output 4.12 times and splits it to both wheels.'
+  };
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = $('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = $('cap'), selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Press the clutch, pick a gear, release the clutch. Watch which pair glows and how fast the output turns.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (el, idx) { el.classList.toggle('on', idx < step); });
+    $('prevBtn').disabled = step <= 1;
+    $('nextBtn').disabled = step >= N;
+  }
+
+  // Gearbox state (shared with the fallback)
+  var gear = 0, clutchIn = false, running = !reduced, inFrac = 1;
+  var boxStatus = $('boxStatus');
+  function setStatus(ok, txt) { boxStatus.className = 'status ' + (ok ? 'ok' : 'bad'); boxStatus.textContent = txt; }
+  function readouts() {
+    var inRpm = 2000 * inFrac, outRpm = gear ? inRpm / RATIOS[gear] : 0;
+    $('bIn').textContent = fmt(inRpm);
+    $('bOut').textContent = fmt(outRpm);
+    $('bKmh').textContent = fmt(outRpm / FD * CIRC * 60 / 1000);
+  }
+  press('#boxGear', 'data-g', function (b) {
+    var g = +b.getAttribute('data-g');
+    if (g === gear) return;
+    if (!clutchIn && g !== 0) { setStatus(false, 'Crunch! The collar hits a gear spinning at a different speed. Press the clutch first.'); return false; }
+    gear = g;
+    if (g === 0) setStatus(true, 'Neutral. No collar is locked. The engine can run while the car stands still.');
+    else setStatus(true, GNAME[g] + ' selected. Ratio ' + RATIOS[g].toFixed(2) + '. ' + (clutchIn ? 'Now release the clutch.' : ''));
+    readouts();
+  });
+  $('clutchBtn').addEventListener('click', function () {
+    clutchIn = !clutchIn;
+    this.setAttribute('aria-pressed', clutchIn ? 'true' : 'false');
+    this.textContent = clutchIn ? 'Release clutch' : 'Press clutch';
+    if (clutchIn) setStatus(true, 'Clutch pressed. The plates part, so the input shaft slows down. Now pick a gear.');
+    else setStatus(true, gear ? 'Clutch released. ' + GNAME[gear] + ': the output shaft turns ' + RATIOS[gear].toFixed(2) + ' times slower than the input.' : 'Clutch released in neutral. The input gears spin, the output shaft stays still.');
+  });
+  $('runBtn').addEventListener('click', function () {
+    running = !running; this.setAttribute('aria-pressed', running ? 'true' : 'false'); this.textContent = running ? 'Pause' : 'Play';
+  });
+  if (!running) { $('runBtn').setAttribute('aria-pressed', 'false'); $('runBtn').textContent = 'Play'; }
+  readouts();
+
+  function init3D() {
+    var stage = $('stage'), renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 500);
+    var TARGET = V(2, 1.5, -2.5), CAMOFF = V(-19, 15, 38), FOCUS = V(0, 0, 0), camF = 1;
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(-15, 30, 25); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(20, -5, 15); scene.add(fill);
+
+    var pivot = new THREE.Group(); pivot.position.copy(TARGET); scene.add(pivot);
+    var world = new THREE.Group(); world.position.copy(TARGET).multiplyScalar(-1); pivot.add(world);
+    var baseY = 0;
+
+    // 1 unit = 10 mm. Shafts run along X. Input shaft at y = +3.5, output shaft at y = -3.5 (70 mm apart).
+    var MATS = {}, PARTS = {};
+    function mat(k, col, real, metal, rough) {
+      var m = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough });
+      m.userData = { col: col, real: real }; (MATS[k] = MATS[k] || []).push(m); return m;
+    }
+    function tag(mesh, k) { mesh.userData.key = k; return mesh; }
+    function grp(parent, k) { var g = new THREE.Group(); parent.add(g); (PARTS[k] = PARTS[k] || []).push(g); return g; }
+    var CYLX = new THREE.CylinderGeometry(1, 1, 1, 32); CYLX.rotateZ(Math.PI / 2);
+    function cylX(r, x0, x1, m, k) { var me = tag(new THREE.Mesh(CYLX, m), k); me.scale.set(x1 - x0, r, r); me.position.x = (x0 + x1) / 2; return me; }
+    var UP = V(0, 1, 0), CYL = new THREE.CylinderGeometry(1, 1, 1, 16);
+    function rodBetween(r, a, b, m, k) {
+      var me = tag(new THREE.Mesh(CYL, m), k), d = b.clone().sub(a), len = d.length();
+      me.position.copy(a).add(b).multiplyScalar(0.5); me.scale.set(r, len, r); me.quaternion.setFromUnitVectors(UP, d.normalize()); return me;
+    }
+    var GEO = {};
+    function gearGeo(n, m, w, hole) {
+      var id = n + '_' + m + '_' + w; if (GEO[id]) return GEO[id];
+      var r = m * n / 2, ra = r + m, rf = r - 1.25 * m, p = Math.PI / n, sh = new THREE.Shape();
+      for (var k = 0; k < n; k++) {
+        var a = 2 * Math.PI * k / n;
+        [[rf, a - p], [rf, a - 0.55 * p], [ra, a - 0.3 * p], [ra, a + 0.3 * p], [rf, a + 0.55 * p]].forEach(function (q, j) {
+          var x = q[0] * Math.cos(q[1]), y = q[0] * Math.sin(q[1]);
+          if (k === 0 && j === 0) sh.moveTo(x, y); else sh.lineTo(x, y);
+        });
+      }
+      var h = new THREE.Path(); h.absarc(0, 0, hole, 0, Math.PI * 2, true); sh.holes.push(h);
+      var g = new THREE.ExtrudeGeometry(sh, { depth: w, bevelEnabled: false, curveSegments: 10 });
+      g.translate(0, 0, -w / 2); g.rotateY(Math.PI / 2);
+      return (GEO[id] = g);
+    }
+    function gearMesh(n, m, w, hole, mt, k) { return tag(new THREE.Mesh(gearGeo(n, m, w, hole), mt), k); }
+
+    var YI = 3.5, YO = -3.5, MOD = 7 / 30, GW = 1.2;
+    var NIN = [0, 13, 21, 26, 30, 34], NOUT = [0, 47, 39, 34, 30, 26];
+    var GX = [0, 4.5, 1.5, -1.5, -4.5, -7.5];
+
+    // 1. Flywheel (spins with engine)
+    var gFly = grp(world, 'flywheel');
+    var mFly = mat('flywheel', 0x8fa3b5, 0x6f757c, 0.6, 0.45);
+    var flySpin = new THREE.Group(); flySpin.position.y = YI; gFly.add(flySpin);
+    var flyDisc = gearMesh(118, 0.2, 1.4, 0.8, mFly, 'flywheel'); flyDisc.position.x = 11.7; flySpin.add(flyDisc);
+    var crankStub = cylX(1.0, 12.4, 15.5, mFly, 'flywheel'); flySpin.add(crankStub);
+    [0, 1, 2, 3, 4, 5].forEach(function (k) { var a = k / 6 * Math.PI * 2, bolt = cylX(0.45, 12.35, 12.75, mFly, 'flywheel'); bolt.position.y = Math.cos(a) * 2; bolt.position.z = Math.sin(a) * 2; flySpin.add(bolt); });
+
+    // 2. Clutch disc (spins with input shaft)
+    var gDisc = grp(world, 'disc');
+    var mDisc = mat('disc', 0xc0503a, 0x5a4a40, 0.1, 0.9), mHub = mat('disc', 0xd98a72, 0x8e9399, 0.6, 0.4);
+    var discSpin = new THREE.Group(); discSpin.position.y = YI; gDisc.add(discSpin);
+    discSpin.add(cylX(9.5, -0.25, 0.25, mDisc, 'disc'));
+    discSpin.add(cylX(2.2, -0.6, 0.6, mHub, 'disc'));
+    [0, 1, 2, 3].forEach(function (k) { var a = k / 4 * Math.PI * 2 + 0.4, sp = cylX(0.5, -0.45, 0.45, mHub, 'disc'); sp.position.y = Math.cos(a) * 3.6; sp.position.z = Math.sin(a) * 3.6; discSpin.add(sp); });
+
+    // 3. Pressure plate, diaphragm spring, release bearing
+    var gPP = grp(world, 'pplate');
+    var mPP = mat('pplate', 0xb58fd0, 0x9da2a8, 0.55, 0.45);
+    var ppSpin = new THREE.Group(); ppSpin.position.y = YI; gPP.add(ppSpin);
+    ppSpin.add(cylX(9.3, -0.3, 0.3, mPP, 'pplate'));
+    var cone = new THREE.Mesh(new THREE.CylinderGeometry(2.6, 9.0, 1.0, 40, 1, true), mPP); cone.geometry.rotateZ(Math.PI / 2); cone.position.x = -0.9; ppSpin.add(tag(cone, 'pplate'));
+    cone.material = mat('pplate', 0x9b6fc0, 0x80868c, 0.6, 0.4); cone.material.side = THREE.DoubleSide;
+    var bearing = cylX(1.9, -0.4, 0.4, mPP, 'pplate'); bearing.position.y = YI; gPP.add(bearing);
+
+    // 4. Input shaft with fixed gears
+    var gIn = grp(world, 'inshaft');
+    var mIn = mat('inshaft', 0xe3a53a, 0xa3a8ad, 0.6, 0.35);
+    var inSpin = new THREE.Group(); inSpin.position.y = YI; gIn.add(inSpin);
+    inSpin.add(cylX(0.6, -8.4, 10.6, mIn, 'inshaft'));
+    var inGears = [null];
+    for (var g = 1; g <= 5; g++) { var me = gearMesh(NIN[g], MOD, GW, 0.6, mat('inshaft', 0xe3a53a, 0xa3a8ad, 0.6, 0.35), 'inshaft'); me.position.set(GX[g], YI, 0); gIn.add(me); inGears.push(me); }
+
+    // 5. Output shaft and free gears
+    var gOutAll = new THREE.Group(); world.add(gOutAll); // moves when exploded
+    var gOS = grp(gOutAll, 'outgears');
+    var mOS = mat('outshaft', 0x2bb3a3, 0x8a9097, 0.6, 0.35);
+    var outShaft = cylX(0.6, -10.6, 6.0, mOS, 'outshaft'); outShaft.position.y = YO; gOS.add(outShaft);
+    var outGears = [null];
+    for (g = 1; g <= 5; g++) { me = gearMesh(NOUT[g], MOD, GW, 0.6, mat('outgears', 0x3f8fc0, 0x9aa0a6, 0.6, 0.35), 'outgears'); me.position.set(GX[g], YO, 0); gOS.add(me); outGears.push(me); }
+    var pinion = gearMesh(17, 0.2, 1.4, 0.6, mOS, 'outshaft'); pinion.position.set(-9.8, YO, 0); gOS.add(pinion);
+
+    // 6. Collars
+    var gCol = grp(gOutAll, 'collars');
+    var mCol = mat('collars', 0x8dc04a, 0x7d838a, 0.7, 0.35), mGroove = mat('collars', 0x5e8a2c, 0x5d636a, 0.7, 0.35);
+    var CX = [3.0, -3.0, -6.0], collars = [];
+    CX.forEach(function (x) {
+      var c = new THREE.Group(); c.position.set(x, YO, 0); gCol.add(c);
+      c.add(gearMesh(20, 0.12, 0.9, 0.6, mCol, 'collars'));
+      c.add(cylX(1.38, -0.15, 0.15, mGroove, 'collars'));
+      collars.push(c);
+    });
+    // which collar and which way for each gear
+    var COLOF = [null, [0, 0.55], [0, -0.55], [1, 0.55], [1, -0.55], [2, -0.55]];
+
+    // 7. Forks, rails and lever
+    var gFork = grp(gOutAll, 'forks');
+    var mFork = mat('forks', 0xd8dde2, 0xa0a5aa, 0.5, 0.45), mLever = mat('forks', 0x3a3d42, 0x2a2c30, 0.2, 0.6);
+    var RAILY = [-2.6, -3.5, -4.4], RAILZ = 6.8, forks = [];
+    CX.forEach(function (x, i) {
+      var f = new THREE.Group(); gFork.add(f);
+      var tor = tag(new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.17, 8, 24, Math.PI), mFork), 'forks');
+      tor.rotation.set(Math.PI / 2, Math.PI / 2, 0); tor.position.set(x, YO, 0); f.add(tor);
+      f.add(rodBetween(0.2, V(x, YO, 1.55), V(x, RAILY[i], RAILZ), mFork, 'forks'));
+      f.add(rodBetween(0.28, V(-9, RAILY[i], RAILZ), V(7, RAILY[i], RAILZ), mFork, 'forks'));
+      forks.push(f);
+    });
+    var lever = new THREE.Group(); lever.position.set(-2, 10.5, 6); world.add(lever); (PARTS.forks = PARTS.forks || []).push(lever);
+    lever.add(tag(new THREE.Mesh(new THREE.BoxGeometry(3, 0.6, 3), mLever), 'forks'));
+    lever.add(rodBetween(0.25, V(0, 0, 0), V(0, 5.5, 0), mFork, 'forks'));
+    var knob = tag(new THREE.Mesh(new THREE.SphereGeometry(0.9, 20, 14), mLever), 'forks'); knob.position.y = 5.8; lever.add(knob);
+    var leverStick = lever.children[1], LEVERTILT = [[0, 0], [0.3, -0.3], [0.3, 0.3], [0, -0.3], [0, 0.3], [-0.3, -0.3]];
+
+    // 8. Final drive ring gear, differential and axles
+    var gFin = grp(gOutAll, 'final');
+    var mRing = mat('final', 0xe8742a, 0x8a9097, 0.6, 0.35), mAx = mat('final', 0x9aa3ad, 0x6a7077, 0.6, 0.4);
+    var RINGZ = -8.7;
+    var ringSpin = new THREE.Group(); ringSpin.position.set(0, YO, RINGZ); gFin.add(ringSpin);
+    var ring = gearMesh(70, 0.2, 1.4, 2.0, mRing, 'final'); ring.position.x = -9.8; ringSpin.add(ring);
+    var diff = tag(new THREE.Mesh(new THREE.SphereGeometry(2.3, 24, 16), mAx), 'final'); diff.position.x = -9.8; ringSpin.add(diff);
+    ringSpin.add(cylX(0.8, -16, -3, mAx, 'final'));
+
+    var ORDER = ['flywheel', 'disc', 'pplate', 'inshaft', 'outgears', 'collars', 'forks', 'final'];
+    var real = false, explode = 0, thE = 0, thIn = 0, thOut = 0, colPos = [0, 0, 0], ppOff = 0;
+
+    function place(dt) {
+      // engine always turns; input follows through the clutch
+      var wE = 2.2;
+      if (running) {
+        thE += wE * dt;
+        var target = clutchIn ? 0 : 1;
+        inFrac += (target - inFrac) * Math.min(1, dt * (clutchIn ? 1.2 : 3));
+        if (Math.abs(inFrac - target) < 0.002) inFrac = target;
+        thIn += wE * inFrac * dt;
+      }
+      flySpin.rotation.x = thE; ppSpin.rotation.x = thE;
+      discSpin.rotation.x = thIn; inSpin.rotation.x = thIn;
+      for (var g = 1; g <= 5; g++) {
+        inGears[g].rotation.x = thIn - Math.PI / 2;
+        outGears[g].rotation.x = -thIn * NIN[g] / NOUT[g] + Math.PI / 2 + Math.PI / NOUT[g];
+      }
+      if (gear) thOut = -thIn * NIN[gear] / NOUT[gear];
+      pinion.rotation.x = thOut;
+      ring.rotation.x = -thOut * 17 / 70 + Math.PI + Math.PI / 70;
+      // collars slide smoothly toward their target
+      for (var c = 0; c < 3; c++) {
+        var tgt = gear && COLOF[gear][0] === c ? COLOF[gear][1] : 0;
+        colPos[c] += (tgt - colPos[c]) * Math.min(1, dt * 6);
+        collars[c].position.x = CX[c] + colPos[c];
+        collars[c].rotation.x = thOut;
+        forks[c].position.x = colPos[c];
+      }
+      // lever tilt
+      var lt = LEVERTILT[gear];
+      lever.rotation.z += (lt[0] - lever.rotation.z) * Math.min(1, dt * 6);
+      lever.rotation.x += (lt[1] - lever.rotation.x) * Math.min(1, dt * 6);
+      // clutch stack
+      var tp = clutchIn ? 1 : 0; ppOff += (tp - ppOff) * Math.min(1, dt * 5);
+      var e = explode;
+      flySpin.position.x = 4 * e;
+      discSpin.position.x = 10.75 - 0.25 * ppOff + 2.6 * e;
+      ppSpin.position.x = 10.2 - 0.55 * ppOff + 1.2 * e;
+      bearing.position.x = 8.3 - 0.3 * ppOff;
+      gIn.position.y = 2.5 * e;
+      gOutAll.position.y = -2.5 * e;
+      ringSpin.position.z = RINGZ - 3 * e;
+      lever.position.y = 10.5 + 3 * e;
+      // glow the working pair
+      if (!selected) {
+        for (g = 1; g <= 5; g++) {
+          var on = gear === g && inFrac > 0.05 && step >= 6;
+          inGears[g].material.emissive.setHex(on ? 0x5a3c00 : 0); outGears[g].material.emissive.setHex(on ? 0x5a3c00 : 0);
+        }
+      }
+      readouts();
+    }
+    function applyStep() {
+      ORDER.forEach(function (k, idx) { PARTS[k].forEach(function (gp) { gp.visible = idx < step; }); });
+      selected = null; clearGlow(); showCaption();
+    }
+    function setColours() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.color.setHex(real ? m.userData.real : m.userData.col); }); }); }
+    function clearGlow() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.emissive.setHex(0); }); }); }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(500, Math.max(340, w * 1.0)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      camF = camera.aspect < 1.05 ? 1.4 : 1.05;
+      camera.updateProjectionMatrix(); aimCamera(1);
+    }
+    var CLUTCHFOCUS = V(10.5, 3.5, 0);
+    function aimCamera(k) {
+      var early = step <= 3, tgt = early ? CLUTCHFOCUS.clone().sub(TARGET) : V(0, 0, 0), zoom = early ? 0.9 : 1;
+      FOCUS.lerp(tgt, k); camZoom += (zoom - camZoom) * k;
+      var fw = FOCUS.clone().applyAxisAngle(UP, pivot.rotation.y).add(TARGET);
+      camera.position.copy(fw).add(CAMOFF.clone().multiplyScalar(camF * camZoom)); camera.lookAt(fw);
+    }
+    var camZoom = 1;
+    window.addEventListener('resize', size); size();
+
+    var el = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    el.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === el) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleChain(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = el.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(world.children, true).filter(function (h) { return visibleChain(h.object) && h.object.userData.key; });
+      var hit = hits[0];
+      clearGlow();
+      if (!hit) { selected = null; showCaption(); return; }
+      selected = hit.object.userData.key;
+      if (MATS[selected]) MATS[selected].forEach(function (m) { m.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(); } });
+    var realBtn = $('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var exIn = $('explode');
+    exIn.addEventListener('input', function () { $('explodeVal').textContent = exIn.value; explode = +exIn.value / 100; if (!running) place(0); });
+    ['clutchBtn'].concat([].slice.call(document.querySelectorAll('#boxGear button'))).forEach(function (b) {
+      (typeof b === 'string' ? $(b) : b).addEventListener('click', function () { if (!running) { for (var k = 0; k < 30; k++) place(0.05); } });
+    });
+
+    var visible = true, last = 0;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      var dt = Math.min(0.1, (t - last) / 1000); last = t;
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.3;
+      place(dt); aimCamera(Math.min(1, dt * 3));
+      renderer.render(scene, camera);
+    }
+    setColours(); applyStep(); place(0);
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    $('stage').innerHTML = '<div class="fail">The 3D gearbox could not load on this device. Use the steps below: each one describes the next part. The gear and clutch buttons still show the numbers.</div>';
+    ['explode', 'realBtn', 'runBtn'].forEach(function (id) { $(id).disabled = true; });
+    inFrac = 1;
+    $('clutchBtn').addEventListener('click', function () { inFrac = clutchIn ? 0 : 1; readouts(); });
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // ---------- Chapter 4: clutch ----------
+  var pedal = $('pedal'), crpm = $('crpm');
+  function updClutch() {
+    var lift = +pedal.value, rpm = +crpm.value;
+    var s = Math.min(1, Math.max(0, (lift - 35) / 35)); s = s * s * (3 - 2 * s);
+    var force = 4000 * s, grip = 0.3 * force * 0.075 * 2, te = torque(rpm);
+    var trans = Math.min(grip, te), push = trans * RATIOS[1] * FD * EFF / RW;
+    var slipping = grip < te, heat = slipping ? trans * 2 * Math.PI * rpm / 60 / 1000 : 0;
+    $('pedalVal').textContent = lift; $('crpmVal').textContent = fmt(rpm);
+    $('cGrip').textContent = fmt(grip); $('cPush').textContent = fmt(push / 9.81); $('cHeat').textContent = heat.toFixed(1);
+    var gap = 10 * (1 - s);
+    $('c1Plate').setAttribute('transform', 'translate(' + gap.toFixed(1) + ',0)');
+    $('c1Disc').setAttribute('transform', 'translate(' + (gap * 0.5).toFixed(1) + ',0)');
+    $('c1Glow').setAttribute('opacity', Math.min(0.9, heat / 14).toFixed(2));
+    var st = $('cStatus'), lab = $('c1Gap');
+    if (grip < 2) { st.className = 'status ok'; st.textContent = 'Plates apart. The engine spins, the gearbox does not. No wear at all.'; lab.textContent = 'Plates apart'; }
+    else if (slipping && push < MASS * 9.81 * 0.012) { st.className = 'status ok'; st.textContent = 'The plates just touch. Not enough grip to move the car yet.'; lab.textContent = 'Just touching'; }
+    else if (slipping) { st.className = heat > 8 ? 'status bad' : 'status ok'; st.textContent = 'Bite point: the car starts to move. The plates slip, and ' + heat.toFixed(1) + ' kW turns into heat. That is like ' + Math.max(1, Math.round(heat / 2)) + ' electric kettles. Fine for 1 or 2 seconds.' + (heat > 8 ? ' High revs make it much worse.' : ''); lab.textContent = 'Slipping'; }
+    else if (rpm < 1200) { st.className = 'status bad'; st.textContent = 'Stall! The clutch now grips harder than the engine can twist at ' + fmt(rpm) + ' rpm. The still wheels drag the engine down and it stops.'; lab.textContent = 'Gripped: stall'; }
+    else { st.className = 'status ok'; st.textContent = 'Fully gripped. The engine and gearbox now turn together. The engine rpm dips as the car takes off. Lift slowly for a smooth start.'; lab.textContent = 'Gripped'; }
+  }
+  pedal.addEventListener('input', updClutch); crpm.addEventListener('input', updClutch); updClutch();
+
+  // ---------- Chapter 5: automatics and CVT ----------
+  var AUTOS = {
+    amt: ['AMT: a robot works a normal manual gearbox', 'Small motors press the clutch and move the collars for you. Cheap and gives good mileage. You feel a small pause, a "head nod", on each shift. Seen in many Maruti (AGS), Tata and Renault cars.'],
+    at: ['Torque converter: an oil coupling', 'Instead of a clutch, two fans face each other in oil. One spins the oil, the oil spins the other. Then sets of planet-style gears change ratio. Very smooth, a bit heavier on fuel. Seen in many SUVs like the Mahindra XUV700 and Maruti Brezza.'],
+    cvt: ['CVT: belt and cones, no steps', 'A steel belt between two cone pulleys gives any ratio in between. No shift jerks at all. Engine noise can rise while speed builds slowly. Seen in Honda City and Amaze, and in Hyundai cars as "IVT".'],
+    dct: ['DCT: two clutches, very fast shifts', 'Really two manual gearboxes in one. One clutch holds the odd gears, one the even gears. The next gear is already waiting, so a shift takes a split second. Sporty, but can get hot in slow traffic. Seen in Hyundai turbo petrol cars and VW and Skoda (as "DSG").']
+  };
+  function showAuto(k) { $('autoOut').innerHTML = '<b>' + AUTOS[k][0] + '</b><br>' + AUTOS[k][1]; }
+  press('#autos', 'data-k', function (b) { showAuto(b.getAttribute('data-k')); });
+  showAuto('amt');
+
+  var cvt = $('cvt'), cvA = 0, cvLast = 0, cvVis = true, cvR = 1;
+  function tangents(x1, r1, x2, r2, y) {
+    var d = x2 - x1, a = Math.asin((r1 - r2) / d);
+    var tTop1 = [x1 + r1 * Math.sin(a), y - r1 * Math.cos(a)], tTop2 = [x2 + r2 * Math.sin(a), y - r2 * Math.cos(a)];
+    var tBot1 = [x1 + r1 * Math.sin(a), y + r1 * Math.cos(a)], tBot2 = [x2 + r2 * Math.sin(a), y + r2 * Math.cos(a)];
+    return 'M' + tTop1.join(',') + ' L' + tTop2.join(',') + ' A' + r2 + ',' + r2 + ' 0 ' + (a < 0 ? 1 : 0) + ' 1 ' + tBot2.join(',') + ' L' + tBot1.join(',') + ' A' + r1 + ',' + r1 + ' 0 ' + (a < 0 ? 0 : 1) + ' 1 ' + tTop1.join(',') + 'Z';
+  }
+  function drawCvt() {
+    var ra = 90 / (1 + cvR), rb = 90 - ra;
+    $('cvA').setAttribute('r', ra.toFixed(1)); $('cvB').setAttribute('r', rb.toFixed(1));
+    $('cvBelt').setAttribute('d', tangents(90, ra + 3, 270, rb + 3, 100));
+    var aDeg = cvA * 180 / Math.PI, bDeg = aDeg / cvR;
+    $('cvAs').setAttribute('y2', (100 - ra * 0.8).toFixed(1)); $('cvAs').setAttribute('transform', 'rotate(' + aDeg.toFixed(1) + ' 90 100)');
+    $('cvBs').setAttribute('y2', (100 - rb * 0.8).toFixed(1)); $('cvBs').setAttribute('transform', 'rotate(' + bDeg.toFixed(1) + ' 270 100)');
+  }
+  function updCvt() {
+    cvR = +cvt.value;
+    $('cvtVal').textContent = cvR.toFixed(2);
+    $('cvKmh').textContent = fmt(2500 / (cvR * FD) * CIRC * 60 / 1000);
+    drawCvt();
+  }
+  cvt.addEventListener('input', updCvt); updCvt();
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { cvVis = en[0].isIntersecting; }).observe($('cvA').ownerSVGElement);
+  function cvLoop(t) {
+    requestAnimationFrame(cvLoop);
+    var dt = Math.min(0.1, (t - cvLast) / 1000); cvLast = t;
+    if (!cvVis || reduced) return;
+    cvA += dt * 3; drawCvt();
+  }
+  requestAnimationFrame(cvLoop);
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tagEl = ans.querySelector('.mark') || document.createElement('span');
+        tagEl.className = 'mark ' + (ok ? 'right' : 'wrong'); tagEl.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tagEl, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl5-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl5-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = $('explainBox');
+  box.value = store.get('dl5-explain') || '';
+  box.addEventListener('input', function () { store.set('dl5-explain', box.value); });
+})();
+</script>
+</body>
+</html>
