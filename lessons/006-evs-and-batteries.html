@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 6: EVs and batteries</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+/* Day 6 extras */
+.plotlab { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+.hot { color: var(--warn); font-weight: 700; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.opts button { text-align: left; }
+.ion { transition: transform .45s ease; }
+.wireflow { stroke-dasharray: 3 13; animation: eflow 1s linear infinite; }
+.wireflow.rev { animation-direction: reverse; }
+.wireflow.still { animation: none; }
+@keyframes eflow { to { stroke-dashoffset: -32; } }
+.seg { transition: width .8s ease, x .8s ease; }
+@media (prefers-reduced-motion: reduce) { .ion, .seg { transition: none; } .wireflow { animation: none; } }
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 6 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>How can 5 litres of energy drive a car 350 km?</h1>
+  <p class="lead">Today you will build an electric car's floor in 3D, move lithium inside a battery cell, and work out what an EV really costs per km.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">A Tata Nexon EV has a 45 kWh battery. That sounds big. But 1 litre of petrol holds about 9.5 kWh of energy. So 45 &divide; 9.5 = about <b>5 litres</b>. The whole battery holds the energy of a small water bottle of petrol.</p>
+  <p class="say">A petrol hatchback goes about 80 km on 5 litres. The Nexon EV goes about <b>350 km</b> on its battery in real driving.</p>
+  <p class="say"><b>How can the EV go more than 4 times further on the same energy?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">Electric energy is a stronger kind of energy</button>
+    <button type="button" data-a="0">The EV is much lighter</button>
+    <button type="button" data-a="1">The petrol car wastes most of its energy as heat</button>
+    <button type="button" data-a="0">Braking makes free extra energy</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>Where does the energy go?</h2>
+  <p>Touch the bonnet of a petrol car after a drive. It is very hot. That heat is petrol you paid for.</p>
+  <p>On Day 4 you saw that an engine is a set of small fires. Fire makes heat first. Only a small part of that heat becomes push. The rest leaves through the exhaust and the radiator.</p>
+  <p>An electric motor does not burn anything. It uses magnets to turn electricity straight into turning. So very little is lost. Out of every 100 units of energy, look how many reach the wheels:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 170" role="img" aria-labelledby="eTitle">
+      <title id="eTitle">Two bars of 100 units each. In the petrol car, only about 20 reach the wheels. In the EV, about 87 do.</title>
+      <text x="10" y="22" font-family="var(--font-display)" font-size="13" font-weight="600" fill="var(--ink)">PETROL CAR</text>
+      <g id="barP"></g>
+      <text x="10" y="102" font-family="var(--font-display)" font-size="13" font-weight="600" fill="var(--ink)">ELECTRIC CAR</text>
+      <g id="barE"></g>
+    </svg>
+  </div>
+  <p class="small"><span style="color:var(--good);font-weight:700">Green</span> = reaches the wheels. Other colours = lost as heat. City driving, rough numbers.</p>
+  <p>Now try it. Give both cars the same energy. Petrol car: 16 km per litre. EV: 7.8 km per kWh, as Autocar India measured on a Nexon EV 45.</p>
+  <label for="ekwh" class="ctrl">
+    <span><b>Energy you give each car:</b> <span id="ekwhVal" class="mono">45</span> kWh <span class="small">(= <span id="eLit">4.7</span> litres of petrol)</span></span>
+    <input id="ekwh" type="range" min="5" max="60" step="1" value="45">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Petrol car goes</div><div class="big"><span id="eKmP">76</span> km</div></div>
+    <div class="tile"><div class="small">EV goes</div><div class="big"><span id="eKmE">351</span> km</div></div>
+    <div class="tile"><div class="small">Petrol cost (&#8377;112/L)</div><div class="big">&#8377;<span id="eRsP">529</span></div></div>
+    <div class="tile"><div class="small">Home power cost (&#8377;8/unit)</div><div class="big">&#8377;<span id="eRsE">360</span></div></div>
+  </div>
+  <p id="eNote" class="note"></p>
+  <p>So the answer to the puzzle: the battery does not hold more energy. The EV just <b>wastes much less</b>. One "unit" on your electricity bill is exactly 1 kWh.</p>
+</section>
+
+<!-- CHAPTER 2: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>Build an electric car's floor, part by part</h2>
+  <p>Where is the "engine" in an EV? Most of it is lying flat under your feet. Engineers call this layout a <b>skateboard</b>. Build it and see why.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn it. The front of the car is on the right.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <div class="row">
+    <button type="button" id="runBtn" aria-pressed="true">Pause</button>
+    <button type="button" id="regenBtn" aria-pressed="false">Brake (regen)</button>
+  </div>
+  <p id="flowStatus" class="status ok">Driving: energy flows from the battery to the motor.</p>
+  <div class="readouts">
+    <div class="tile"><div class="small">Car speed</div><div class="big">60 km/h</div></div>
+    <div class="tile"><div class="small">Wheels turn</div><div class="big">480 rpm</div></div>
+    <div class="tile"><div class="small">Motor turns (9 : 1)</div><div class="big">4,300 rpm</div></div>
+    <div class="tile"><div class="small">Battery power</div><div class="big" id="flowKw">7 kW out</div></div>
+  </div>
+  <label for="lid" class="ctrl">
+    <span class="small">Lift the battery lid: <span id="lidVal" class="mono">60</span>%</span>
+    <input id="lid" type="range" min="0" max="100" step="5" value="60">
+  </label>
+  <p class="small">The colours are only for learning. Simplified: the real car has a body, a 12-volt battery, and more pipes. Sizes are close to a compact SUV like the Nexon EV.</p>
+</section>
+
+<!-- CHAPTER 3 -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>Inside one cell: lithium goes back and forth</h2>
+  <p>Every cell you just built works the same way as the cell in your phone. Only bigger.</p>
+  <p>Think of two parking lots with a river between them. The left lot is <b>graphite</b> (like pencil lead). The right lot is a <b>metal oxide</b>. The cars are tiny lithium bits called <b>ions</b>.</p>
+  <p>When the battery is full, the ions are parked in the graphite. They want to go right. When you drive, they cross the river. But each ion leaves its electron behind. The electron cannot cross. It must go the long way, through the wire and through the motor. That flow of electrons is the <b>current</b> that turns your wheels.</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 240" role="img" aria-labelledby="cTitle">
+      <title id="cTitle">A battery cell. Lithium ions move between graphite on the left and metal oxide on the right through a separator. Electrons go around through a wire and a motor.</title>
+      <path id="wire" d="M80,52 L80,22 L280,22 L280,52" fill="none" stroke="var(--steel)" stroke-width="5"/>
+      <path id="wireFlow" class="wireflow" d="M80,52 L80,22 L280,22 L280,52" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="180" cy="22" r="14" fill="var(--surface)" stroke="var(--ink)" stroke-width="2"/>
+      <text x="180" y="27" text-anchor="middle" font-family="var(--font-display)" font-size="13" font-weight="800" fill="var(--ink)">M</text>
+      <text x="200" y="14" class="plotlab">motor</text>
+      <rect x="30" y="52" width="300" height="160" rx="8" fill="var(--water)" opacity="0.14"/>
+      <rect x="30" y="52" width="104" height="160" rx="6" fill="var(--rubber)" opacity="0.75"/>
+      <g stroke="var(--steel)" stroke-width="1.5" opacity="0.7">
+        <line x1="34" y1="80" x2="130" y2="80"/><line x1="34" y1="110" x2="130" y2="110"/><line x1="34" y1="140" x2="130" y2="140"/><line x1="34" y1="170" x2="130" y2="170"/><line x1="34" y1="200" x2="130" y2="200"/>
+      </g>
+      <rect x="226" y="52" width="104" height="160" rx="6" fill="var(--warn)" opacity="0.35"/>
+      <line x1="180" y1="56" x2="180" y2="208" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 5"/>
+      <g id="ions"></g>
+      <text x="82" y="230" text-anchor="middle" class="plotlab">graphite (&minus;)</text>
+      <text x="180" y="230" text-anchor="middle" class="plotlab">separator</text>
+      <text x="278" y="230" text-anchor="middle" class="plotlab">metal oxide (+)</text>
+    </svg>
+  </div>
+  <div class="row">
+    <button type="button" id="cDrive" aria-pressed="true">Drive</button>
+    <button type="button" id="cCharge" aria-pressed="false">Charge</button>
+    <button type="button" id="cPause" aria-pressed="false">Pause</button>
+  </div>
+  <label for="soc" class="ctrl">
+    <span><b>Charge level:</b> <span id="socVal" class="mono">80</span>%</span>
+    <input id="soc" type="range" min="0" max="100" step="1" value="80">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">One cell</div><div class="big"><span id="cV">3.95</span> V</div></div>
+    <div class="tile"><div class="small">96 cells in a chain</div><div class="big"><span id="pV">379</span> V</div></div>
+    <div class="tile"><div class="small">Energy left</div><div class="big"><span id="cKwh">36</span> kWh</div></div>
+    <div class="tile"><div class="small">Range left</div><div class="big"><span id="cKm">281</span> km</div></div>
+  </div>
+  <p id="cStatus" class="status ok"></p>
+  <p>Each part has a job:</p>
+  <ul class="plain">
+    <li><b>Graphite:</b> holds the ions when the battery is full. <span class="hot">Without it:</span> nowhere to store them.</li>
+    <li><b>Metal oxide:</b> holds the ions when the battery is empty. <span class="hot">Without it:</span> the ions have no reason to move, so no energy.</li>
+    <li><b>Electrolyte:</b> the liquid "river" that lets ions swim. <span class="hot">Without it:</span> ions are stuck and the cell is dead.</li>
+    <li><b>Separator:</b> a plastic sheet full of tiny holes, thinner than a hair. Ions pass, electrons cannot. <span class="hot">Without it:</span> the two sides touch, short-circuit, and get very hot. This is how battery fires start.</li>
+  </ul>
+  <p>Charging is the same trip backwards. The charger pushes electrons back into the graphite, and the ions follow them home.</p>
+  <p class="note">One cell gives only about 3.7 volts, like your phone. The car needs about 350 volts. So the cells are joined in a chain: 96 &times; 3.7 = <b>355 V</b>. That is why the orange wires in the 3D model are dangerous to touch.</p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>Why an EV jumps off the signal, and needs no gearbox</h2>
+  <p>Remember Day 5? A petrol engine has a happy zone, about 1,000 to 6,000 rpm. Below that, it has almost no twist. So it needs a clutch and 5 gears.</p>
+  <p>An electric motor gives its <b>full twist from 0 rpm</b>. The moment you press the pedal, it pulls. It also spins happily past 12,000 rpm. So one fixed gear is enough. No clutch. No gear change.</p>
+  <p>Slide the rpm. Compare the twist of the Nexon EV motor (215 Nm, 106 kW, from Tata) with the 1.2 litre petrol engine from Day 5:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 230" role="img" aria-labelledby="tqTitle">
+      <title id="tqTitle">Twist against rpm. The electric motor is flat at 215 Nm from zero and then falls slowly. The petrol engine starts at 800 rpm, peaks at 113 Nm and stops at 6,200 rpm.</title>
+      <g id="tqAxes"></g>
+      <path id="tqE" fill="none" stroke="var(--water)" stroke-width="3"/>
+      <path id="tqP" fill="none" stroke="var(--accent)" stroke-width="3"/>
+      <line id="tqLine" x1="40" y1="20" x2="40" y2="190" stroke="var(--ink)" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <circle id="tqDotE" r="6" fill="var(--water)"/>
+      <circle id="tqDotP" r="6" fill="var(--accent)"/>
+      <text x="250" y="40" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--water)">electric motor</text>
+      <text x="250" y="56" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--accent)">petrol engine</text>
+    </svg>
+  </div>
+  <label for="trpm" class="ctrl">
+    <span><b>Spinning at:</b> <span id="trpmVal" class="mono">500</span> rpm</span>
+    <input id="trpm" type="range" min="0" max="12000" step="100" value="500">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Motor twist</div><div class="big"><span id="tE">215</span> Nm</div></div>
+    <div class="tile"><div class="small">Engine twist</div><div class="big"><span id="tP">0</span> Nm</div></div>
+    <div class="tile"><div class="small">Motor power</div><div class="big"><span id="tKw">11</span> kW</div></div>
+  </div>
+  <p id="tNote" class="note"></p>
+  <h3>Braking that fills the battery</h3>
+  <p>On Day 2 you learned that brakes turn your speed into heat. Wasted. An EV does something smarter. When you lift your foot, the motor runs backwards as a <b>generator</b>. The wheels turn the motor, and the motor charges the battery. This is <b>regenerative braking</b>, or regen. Press "Brake (regen)" in the 3D model to see the flow turn around.</p>
+  <label for="rkmh" class="ctrl">
+    <span><b>Slow down to a stop from:</b> <span id="rkmhVal" class="mono">60</span> km/h</span>
+    <input id="rkmh" type="range" min="10" max="100" step="5" value="60">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Energy of motion</div><div class="big"><span id="rKe">66</span> Wh</div></div>
+    <div class="tile"><div class="small">Back into battery (~60%)</div><div class="big"><span id="rBack">39</span> Wh</div></div>
+    <div class="tile"><div class="small">Free driving</div><div class="big"><span id="rM">310</span> m</div></div>
+  </div>
+  <p class="small">Energy of motion = &frac12; &times; mass &times; speed&sup2;. Car with 2 people: about 1,700 kg. Some is lost in the motor, tyres and air, so roughly 60% comes back.</p>
+  <p>That is not free energy. It is getting back some of what you spent speeding up. In Bengaluru or Mumbai traffic, with stops every few hundred metres, it adds up. Brake pads on EVs last much longer too.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Charging: the bucket and the tap</h2>
+  <p>Two words confuse everyone: <b>kWh</b> and <b>kW</b>. Think of a bucket and a tap.</p>
+  <ul class="plain">
+    <li><b>kWh is the bucket.</b> How much energy the battery holds. The Nexon EV bucket is 45 kWh.</li>
+    <li><b>kW is the tap.</b> How fast energy flows in. A home plug is a thin tap. A fast charger is a fire hose.</li>
+  </ul>
+  <p>Time = bucket to fill &divide; tap speed. Pick a charger and how full you want it:</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 90" role="img" aria-labelledby="bTitle">
+      <title id="bTitle">A battery outline. The part already full is grey. The part being added now is green.</title>
+      <rect x="20" y="20" width="300" height="50" rx="8" fill="none" stroke="var(--ink)" stroke-width="3"/>
+      <rect x="322" y="34" width="12" height="22" rx="3" fill="var(--ink)"/>
+      <rect id="bOld" x="24" y="24" width="60" height="42" rx="5" fill="var(--steel)"/>
+      <rect id="bNew" class="seg" x="84" y="24" width="180" height="42" rx="5" fill="var(--good)"/>
+      <text id="bLab" x="170" y="86" text-anchor="middle" class="plotlab">adding 70% = 31.5 kWh</text>
+    </svg>
+  </div>
+  <div class="opts" id="chargers">
+    <button type="button" data-k="plug">Home 15 A plug</button>
+    <button type="button" data-k="wall" aria-pressed="true">7.2 kW wall box</button>
+    <button type="button" data-k="dc">60 kW fast charger</button>
+  </div>
+  <label for="cFrom" class="ctrl">
+    <span><b>Start at:</b> <span id="cFromVal" class="mono">20</span>%</span>
+    <input id="cFrom" type="range" min="0" max="95" step="5" value="20">
+  </label>
+  <label for="cTo" class="ctrl">
+    <span><b>Stop at:</b> <span id="cToVal" class="mono">90</span>%</span>
+    <input id="cTo" type="range" min="5" max="100" step="5" value="90">
+  </label>
+  <div class="readouts">
+    <div class="tile"><div class="small">Time</div><div class="big" id="chT">5 h 10 min</div></div>
+    <div class="tile"><div class="small">Range added</div><div class="big"><span id="chKm">246</span> km</div></div>
+    <div class="tile"><div class="small">Cost</div><div class="big">&#8377;<span id="chRs">280</span></div></div>
+    <div class="tile"><div class="small">Petrol for same km</div><div class="big">&#8377;<span id="chPet">1,720</span></div></div>
+  </div>
+  <p id="chNote" class="note"></p>
+  <p class="small">Times use Tata's own figures for the Nexon EV 45: 15 A plug, full in about 17.5 hours; 7.2 kW wall box, 10 to 100% in 6 h 36 min; 60 kW DC, 10 to 80% in 40 min. Power cost: about &#8377;8 per unit at home, about &#8377;20 at public fast chargers, plus about 10% lost as heat while charging. Petrol &#8377;111.68 per litre (Bengaluru, this week), 16 km/L.</p>
+  <h3>Why fast charging slows down after 80%</h3>
+  <p>Think of filling a bus. When it is empty, people rush in. When it is nearly full, the last people must squeeze in slowly to find a seat. Ions are the same. Near full, the graphite has few free spots. Pushing hard then makes heat and can damage the cell. So the car's brain slows the charging down.</p>
+  <p class="note"><b>Battery life in India:</b> a battery ages faster when it is hot, kept at 100% for long, or fast-charged every single day. Charge to about 80 to 90% for daily use. Park in shade in summer. Go to 100% just before a long trip.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"An EV battery dies in 3 or 4 years, and a new one costs as much as the car."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Car batteries lose capacity slowly, a little each year. The BMS and the cooling plate protect them far better than a phone protects its battery. Most makers in India give a warranty of around 8 years. Check the exact terms for any car you buy.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Driving an EV on a waterlogged road will give you an electric shock."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. The battery case is sealed against water and dust (many are rated IP67: underwater at 1 metre for 30 minutes). The high-voltage system is kept apart from the car body, and the BMS cuts power if it senses a fault. But deep water can still damage any car, petrol or electric. Avoid it if you can.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Charge to 100% every night to keep the battery healthy."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. A cell sitting full for hours ages faster, especially in heat. For daily use, 80 to 90% is gentler. Your phone's "optimised charging" setting does the same trick. (Some LFP batteries are an exception; follow the car's manual.)</p>
+    </div>
+  </div>
+</section>
+
+<!-- WATCH -->
+<section class="card">
+  <span class="num">WATCH</span>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/3SAxXUIre28" title="How does an Electric Car work? Tesla Model S, by Lesics" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=3SAxXUIre28" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>How does an Electric Car work? Tesla Model S</b><br><span style="color:#C3CAD1;font-size:.9rem">Lesics (Learn Engineering), on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 2. Pause when the inverter first appears. Say what it does before he does: it turns the battery's DC into AC for the motor. Then notice the single gear, just like in our model.</span>
+  </a>
+  <div class="vwrap"><iframe src="https://www.youtube-nocookie.com/embed/VxMM4g2Sk8U" title="Lithium-ion battery, How does it work?, by Lesics" loading="lazy" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>
+  <a class="video" href="https://www.youtube.com/watch?v=VxMM4g2Sk8U" target="_blank" rel="noopener">
+    <div class="row"><span class="play" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20"><path d="M6 4 L16 10 L6 16 Z" fill="#1C1F23"/></svg></span>
+      <div><b>Lithium-ion battery, How does it work?</b><br><span style="color:#C3CAD1;font-size:.9rem">Lesics (Learn Engineering), on YouTube</span></div></div>
+    <span style="color:#C3CAD1">Watch after Chapter 3. Pause when the ions start to move. Point to the separator and say why the electrons cannot cross it.</span>
+  </a>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four things to try in real life</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Find the price of one unit (kWh) on your home electricity bill. Divide it by 7.8. That is what an EV would cost you per km at home.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Work out your own car's cost per km: petrol price &divide; your km per litre. Compare it with the number above.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>Open a maps app and search "EV charging station" near you. Note the kW of the nearest fast charger and its price per unit.</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>Check your phone's battery health (on iPhone: Settings, Battery, Battery Health). It is a lithium-ion cell, ageing just like Chapter 5 said.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. Why does an EV go so much further on the same energy?</summary><p>A petrol engine turns most of its energy into heat. Only about 20% reaches the wheels. An electric motor and inverter waste very little, so about 85 to 90% reaches the wheels. Regen braking also gets some back.</p></details>
+  <details><summary>2. What does the BMS do?</summary><p>It is the battery's brain. It watches the voltage and temperature of every cell, balances them, controls charging speed, and cuts power if something is wrong.</p></details>
+  <details><summary>3. kWh or kW: which one tells you how long a charge takes?</summary><p>You need both. kWh is the size of the bucket. kW is the speed of the tap. Time = kWh to add &divide; kW. For example, 31.5 kWh &divide; 6 kW = about 5 hours.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 5, Gearbox and clutch):</b></p>
+  <details><summary>4. A small gear with 12 teeth turns a big gear with 42 teeth. What do you gain and lose?</summary><p>Ratio 42 &divide; 12 = 3.5. The big gear twists 3.5 times harder, but turns 3.5 times slower.</p></details>
+  <details><summary>5. Why is holding a car on a slope at the clutch's bite point a bad habit?</summary><p>The plates slip the whole time. The engine's work turns into heat in the clutch, and it wears out fast. Use the brake or handbrake instead.</p></details>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: why an EV wastes less energy, what moves inside a cell, why an EV needs no gearbox, and the difference between kWh and kW.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. A petrol engine turns most of its fuel into heat..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>Days 2 and 5:</b> regen does the job of brakes without the heat, and the motor's flat twist is why the clutch and gearbox disappear.</li>
+    <li><b>Chemistry:</b> lithium is the lightest metal. The 2019 Nobel Prize in Chemistry went to Goodenough, Whittingham and Yoshino for building the lithium-ion battery.</li>
+    <li><b>Week 4, phone batteries:</b> the same cell chemistry sits in your pocket. You will open one up then.</li>
+    <li><b>Tomorrow, car safety:</b> a heavy battery in the floor makes an EV hard to roll over. But crash structures must also protect that battery. Tomorrow is airbags, ABS and crash tests, plus your first weekly exam.</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Petrol hatchback vs Nexon EV 45, rough numbers</caption>
+        <thead><tr><th></th><th>Petrol car</th><th>EV</th></tr></thead>
+        <tbody>
+          <tr><td>Energy reaching the wheels</td><td class="mono">about 20%</td><td class="mono">85 to 90%</td></tr>
+          <tr><td>Energy store</td><td class="mono">37 L tank = 350 kWh</td><td class="mono">45 kWh battery</td></tr>
+          <tr><td>Twist from 0 rpm</td><td>none (needs clutch)</td><td>full (215 Nm)</td></tr>
+          <tr><td>Gears</td><td class="mono">5 + reverse</td><td class="mono">1 (motor runs backwards for reverse)</td></tr>
+          <tr><td>Cost per km</td><td class="mono">about &#8377;7</td><td class="mono">&#8377;1 home, &#8377;2.6 fast charger</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>kWh:</b> amount of energy (the bucket). 1 kWh = 1 unit on your bill. <b>kW:</b> rate of flow (the tap).</li>
+      <li><b>SoC (state of charge):</b> how full the battery is, in %.</li>
+      <li><b>Inverter:</b> turns the battery's DC into 3-phase AC for the motor, and controls its speed. Runs backwards during regen.</li>
+      <li><b>Onboard charger:</b> turns AC from your home into DC for the battery. A DC fast charger skips it and feeds the battery directly, which is why it is faster.</li>
+      <li><b>Connectors in India:</b> cars mostly use Type 2 for AC and CCS2 for DC fast charging.</li>
+      <li><b>Chemistries:</b> NMC (nickel manganese cobalt) packs more energy in less weight. LFP (lithium iron phosphate) is cheaper, safer with heat, and lasts more cycles, but is heavier for the same range.</li>
+      <li><b>Cell shapes:</b> cylinder (like a big AA), prismatic (flat hard box), pouch (soft flat packet).</li>
+      <li><b>Orange cables</b> on any EV carry high voltage. Never cut or touch them. Rescue teams are trained to look for them.</li>
+      <li><b>Range drops with:</b> high speed (air drag grows with speed&sup2;), AC on full, heavy load, steep hills, hard acceleration.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="005-gearbox-and-clutch.html">&larr; Day 5: Gearbox and clutch</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 7, Car safety (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) { var e = document.createElementNS(SVGNS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+  function press(sel, attr, cb) {
+    var bs = document.querySelectorAll(sel + ' button[' + attr + ']');
+    bs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (cb(b) === false) return;
+        bs.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+  }
+
+  // Shared numbers
+  var KWH_L = 9.5, KMPL = 16, KM_KWH = 7.8, PETROL = 111.68, HOME = 8, DCPRICE = 20, BATT = 45;
+
+  // Progress bar
+  var bar = $('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = $('guessOut');
+  press('#guess', 'data-a', function (b) {
+    var ok = b.getAttribute('data-a') === '1';
+    guessOut.hidden = false;
+    guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+      'A petrol car turns about <b>80%</b> of its fuel into heat. Only about 20% pushes the car. An EV gets about 85 to 90% of its battery energy to the wheels. The EV is actually <b>heavier</b>, and braking only gives back some of what you spent. Chapter 1 shows it.';
+  });
+
+  // ---------- Chapter 1: energy bars ----------
+  var PSEG = [[20, 'var(--good)', 'wheels 20'], [60, 'var(--warn)', 'heat: exhaust, radiator 60'], [16, 'var(--accent)', 'friction, idling 16'], [4, 'var(--steel)', '']];
+  var ESEG = [[87, 'var(--good)', 'wheels 87'], [6, 'var(--warn)', ''], [4, 'var(--accent)', ''], [3, 'var(--steel)', '']];
+  function drawBar(g, segs, y, notes) {
+    var x = 10, W = 340;
+    segs.forEach(function (s, i) {
+      var w = s[0] / 100 * W;
+      var r = el('rect', { x: x, y: y, width: 0, height: 30, fill: s[1], class: 'seg' }, g);
+      (function (r, w) { setTimeout(function () { r.setAttribute('width', w - 1); }, 100 + i * 150); })(r, w);
+      if (s[2]) el('text', { x: x + 4, y: y + 46, class: 'plotlab' }, g).textContent = s[2];
+      x += w;
+    });
+    if (notes) el('text', { x: 350, y: y + 46, 'text-anchor': 'end', class: 'plotlab' }, g).textContent = notes;
+  }
+  drawBar($('barP'), PSEG, 30, '');
+  drawBar($('barE'), ESEG, 110, 'motor, inverter, battery heat 13');
+  var ekwh = $('ekwh');
+  function updEnergy() {
+    var k = +ekwh.value, lit = k / KWH_L;
+    $('ekwhVal').textContent = k; $('eLit').textContent = lit.toFixed(1);
+    var kmP = lit * KMPL, kmE = k * KM_KWH;
+    $('eKmP').textContent = fmt(kmP); $('eKmE').textContent = fmt(kmE);
+    $('eRsP').textContent = fmt(lit * PETROL); $('eRsE').textContent = fmt(k * HOME);
+    $('eNote').textContent = 'The EV goes ' + (kmE / kmP).toFixed(1) + ' times further on the same energy. Per km: petrol about ₹' + (PETROL / KMPL).toFixed(1) + ', EV charged at home about ₹' + (HOME / KM_KWH).toFixed(1) + '.';
+  }
+  ekwh.addEventListener('input', updEnergy); updEnergy();
+
+  // ---------- Chapter 2: 3D skateboard ----------
+  var STEPS = [
+    { key: 'frame', t: 'Frame and wheels', d: 'Two strong steel rails run from front to back, with the wheels at the corners. In an EV the middle is empty. That space is waiting for the battery.', w: '' },
+    { key: 'cells', t: 'Cells: 96 small batteries', d: 'Each block is one cell, like a big flat phone battery. One cell gives only about 3.7 volts. Together they hold 45 kWh.', w: 'Without them: nothing to store energy. Chapter 3 opens one up.' },
+    { key: 'wiring', t: 'Busbars: join cells in a chain', d: 'Copper strips (orange here) join the cells one after another, plus to minus. Like putting batteries end to end in a torch. 96 cells in a chain give about 355 volts.', w: 'Without them: each cell works alone at 3.7 V, far too weak to turn the motor.' },
+    { key: 'cooling', t: 'Cooling plate: a liquid radiator', d: 'A metal plate under the cells with coolant flowing inside. It takes heat away when you drive hard or fast-charge, and can warm the cells when it is cold.', w: 'Without it: cells get hot in Indian summers, age fast, and can even catch fire.' },
+    { key: 'case', t: 'Battery case: a sealed steel box', d: 'A strong box around everything, bolted under the floor. It is sealed so water and dust cannot get in. Use the slider to lift the lid.', w: 'Without it: a pothole, a stone or a flooded road could damage the cells.' },
+    { key: 'bms', t: 'BMS: the battery brain', d: 'A small computer (the battery management system). Thin wires let it read the voltage and temperature of every cell, many times a second. It keeps all cells equal.', w: 'Without it: one weak cell could be over-charged or drained flat, and the whole pack could fail or overheat.' },
+    { key: 'inverter', t: 'Inverter: the power manager', d: 'The battery gives steady DC, like a torch. The motor needs AC that changes direction very fast. The inverter switches the current thousands of times a second. When you press the pedal more, it sends more power.', w: 'Without it: the motor cannot use the battery at all, and you cannot control speed.' },
+    { key: 'motor', t: 'Motor and one gear', d: 'Magnets in the motor turn electricity into turning. The inner part, the rotor, spins. One fixed gear (about 9 : 1) slows it down for the wheels. Press "Brake (regen)": the motor becomes a generator and the energy dots flow back.', w: 'Without the gear: the motor would spin the wheels 9 times too fast, with too little twist.' },
+    { key: 'charge', t: 'Charging port and onboard charger', d: 'The socket is in front, where a fuel cap would be. Your home gives AC. The onboard charger turns it into DC for the cells. A fast charger gives DC directly, so it skips this box.', w: 'Without it: you could only charge at a DC fast charger, never at home.' }
+  ];
+  var N = STEPS.length;
+  var INFO = {
+    frame: 'Frame and wheels: carries everything. The middle is free for the battery.',
+    cells: 'Cell: one small lithium-ion battery, about 3.7 V.',
+    wiring: 'Busbars: copper strips joining the cells in a chain for high voltage.',
+    cooling: 'Cooling plate: liquid flows inside to keep cells at a safe temperature.',
+    'case': 'Battery case: sealed, strong box that protects the cells.',
+    bms: 'BMS: watches every cell and protects the pack.',
+    inverter: 'Inverter: turns battery DC into AC for the motor. Orange cable = high voltage.',
+    motor: 'Motor: turns electricity into turning. Becomes a generator when braking.',
+    gear: 'Gear and axles: one fixed gear, about 9 : 1, then shafts to the front wheels.',
+    charge: 'Charging port and onboard charger: brings in power from your home plug.'
+  };
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = $('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = $('cap'), selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Notice: no engine, no clutch, no gearbox, no fuel tank, no exhaust. Press "Brake (regen)" and watch the flow turn around.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (e, idx) { e.classList.toggle('on', idx < step); });
+    $('prevBtn').disabled = step <= 1;
+    $('nextBtn').disabled = step >= N;
+  }
+
+  var running = !reduced, regen = false;
+  function flowText() {
+    var st = $('flowStatus');
+    if (regen) { st.className = 'status ok'; st.textContent = 'Braking with regen: the wheels turn the motor. It makes electricity, and the inverter sends it back into the battery.'; $('flowKw').textContent = '25 kW in'; }
+    else { st.className = 'status ok'; st.textContent = 'Driving: energy flows from the battery, through the inverter, to the motor.'; $('flowKw').textContent = '7 kW out'; }
+  }
+  $('regenBtn').addEventListener('click', function () { regen = !regen; this.setAttribute('aria-pressed', regen ? 'true' : 'false'); flowText(); });
+  $('runBtn').addEventListener('click', function () { running = !running; this.setAttribute('aria-pressed', running ? 'true' : 'false'); this.textContent = running ? 'Pause' : 'Play'; });
+  if (!running) { $('runBtn').setAttribute('aria-pressed', 'false'); $('runBtn').textContent = 'Play'; }
+  flowText();
+
+  function init3D() {
+    var stage = $('stage'), renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var V = function (x, y, z) { return new THREE.Vector3(x, y, z); };
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 500);
+    var TARGET = V(0, 3.5, 0), CAMOFF = V(18, 22, 34), FOCUS = V(0, 0, 0), camF = 1, camZoom = 1;
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(15, 30, 25); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-20, -5, 15); scene.add(fill);
+
+    var pivot = new THREE.Group(); pivot.position.copy(TARGET); scene.add(pivot);
+    var world = new THREE.Group(); world.position.copy(TARGET).multiplyScalar(-1); pivot.add(world);
+    var baseY = -0.35; pivot.rotation.y = baseY;
+
+    // 1 unit = 10 cm. Front of car is +x. Ground at y = 0.
+    var MATS = {}, PARTS = {};
+    function mat(k, col, real, metal, rough, alpha) {
+      var m = new THREE.MeshStandardMaterial({ color: col, metalness: metal, roughness: rough, transparent: !!alpha, opacity: alpha || 1, depthWrite: !alpha, side: alpha ? THREE.DoubleSide : THREE.FrontSide });
+      m.userData = { col: col, real: real }; (MATS[k] = MATS[k] || []).push(m); return m;
+    }
+    function tag(mesh, k) { mesh.userData.key = k; return mesh; }
+    function grp(k) { var g = new THREE.Group(); world.add(g); (PARTS[k] = PARTS[k] || []).push(g); return g; }
+    function box(w, h, d, x, y, z, m, k, parent) { var me = tag(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m), k); me.position.set(x, y, z); parent.add(me); return me; }
+    var UP = V(0, 1, 0), CYL = new THREE.CylinderGeometry(1, 1, 1, 14);
+    function rod(r, a, b, m, k, parent) {
+      var me = tag(new THREE.Mesh(CYL, m), k), d = b.clone().sub(a), len = d.length();
+      me.position.copy(a).add(b).multiplyScalar(0.5); me.scale.set(r, len, r); me.quaternion.setFromUnitVectors(UP, d.normalize()); parent.add(me); return me;
+    }
+    function cylZ(r, len, x, y, z, m, k, parent, seg) { var g = new THREE.CylinderGeometry(r, r, len, seg || 32); g.rotateX(Math.PI / 2); var me = tag(new THREE.Mesh(g, m), k); me.position.set(x, y, z); parent.add(me); return me; }
+
+    // 1. Frame and wheels
+    var gF = grp('frame');
+    var mRail = mat('frame', 0x8c97a3, 0x55595f, 0.6, 0.45), mTyre = mat('frame', 0x34373c, 0x1d1f22, 0, 0.95), mRim = mat('frame', 0xc9d0d7, 0xb8c0c9, 0.7, 0.35);
+    var WX = 12.5, WZ = 7.75, WR = 3.3;
+    box(34, 0.8, 0.6, 0, 3.3, -6.3, mRail, 'frame', gF); box(34, 0.8, 0.6, 0, 3.3, 6.3, mRail, 'frame', gF);
+    box(0.8, 0.8, 12, WX + 3.6, 3.3, 0, mRail, 'frame', gF); box(0.8, 0.8, 12, -WX - 3.6, 3.3, 0, mRail, 'frame', gF);
+    box(0.8, 0.6, 12, -WX, 3.3, 0, mRail, 'frame', gF);
+    var wheels = [];
+    [[WX, -WZ], [WX, WZ], [-WX, -WZ], [-WX, WZ]].forEach(function (p) {
+      var w = new THREE.Group(); w.position.set(p[0], WR, p[1]); gF.add(w);
+      cylZ(WR, 2.15, 0, 0, 0, mTyre, 'frame', w, 40);
+      cylZ(2.0, 2.2, 0, 0, 0, mRim, 'frame', w, 24);
+      for (var s = 0; s < 5; s++) { var sp = box(0.35, 3.6, 0.3, 0, 0, p[1] > 0 ? 1.12 : -1.12, mRail, 'frame', w); sp.rotation.z = s / 5 * Math.PI; }
+      wheels.push(w);
+    });
+
+    // 2. Cells: 16 x 6 = 96
+    var gC = grp('cells');
+    var mCell = mat('cells', 0x8dc04a, 0x3b3f45, 0.2, 0.6), mTerm = mat('cells', 0xd8dde2, 0xb8c0c9, 0.8, 0.3);
+    var CELLG = new THREE.BoxGeometry(0.95, 1.1, 1.55), CX0 = -8.25, CZ0 = -4.375, CY = 2.95, rowsZ = [];
+    for (var a = 0; a < 16; a++) for (var b2 = 0; b2 < 6; b2++) {
+      var c = tag(new THREE.Mesh(CELLG, mCell), 'cells'); c.position.set(CX0 + a * 1.1, CY, CZ0 + b2 * 1.75); gC.add(c);
+    }
+    for (b2 = 0; b2 < 6; b2++) rowsZ.push(CZ0 + b2 * 1.75);
+
+    // 3. Busbars
+    var gW = grp('wiring');
+    var mBus = mat('wiring', 0xe8742a, 0xc87533, 0.7, 0.35);
+    rowsZ.forEach(function (z, j) {
+      for (var a = 0; a < 15; a++) box(0.9, 0.1, 0.35, CX0 + a * 1.1 + 0.55, 3.56, z + (a % 2 ? 0.45 : -0.45), mBus, 'wiring', gW);
+      if (j < 5) box(0.4, 0.1, 1.75, (j % 2 ? CX0 : CX0 + 15 * 1.1), 3.56, z + 0.875, mBus, 'wiring', gW);
+    });
+
+    // 4. Cooling plate
+    var gK = grp('cooling');
+    var mCool = mat('cooling', 0x3f8fc0, 0xb8c0c9, 0.6, 0.4), mPipe = mat('cooling', 0x6cb2d8, 0x2a2c30, 0.2, 0.6);
+    box(18, 0.3, 10.8, 0, 2.22, 0, mCool, 'cooling', gK);
+    rod(0.22, V(9, 2.25, -3), V(16.4, 2.6, -3), mPipe, 'cooling', gK);
+    rod(0.22, V(9, 2.25, 3), V(16.4, 2.6, 3), mPipe, 'cooling', gK);
+    box(0.4, 1.6, 8, 16.7, 2.6, 0, mPipe, 'cooling', gK);
+
+    // 5. Case: tray and lid
+    var gS = grp('case');
+    var mCase = mat('case', 0xb58fd0, 0x6f757c, 0.5, 0.5), mLid = mat('case', 0x9b6fc0, 0x80868c, 0.5, 0.5, 0.55);
+    box(20.4, 0.3, 11.6, 0, 1.92, 0, mCase, 'case', gS);
+    box(0.3, 1.9, 11.6, 10.2, 2.9, 0, mCase, 'case', gS); box(0.3, 1.9, 11.6, -10.2, 2.9, 0, mCase, 'case', gS);
+    box(20.4, 1.9, 0.3, 0, 2.9, 5.8, mCase, 'case', gS); box(20.4, 1.9, 0.3, 0, 2.9, -5.8, mCase, 'case', gS);
+    var lid = box(20.4, 0.25, 11.6, 0, 3.95, 0, mLid, 'case', gS);
+
+    // 6. BMS
+    var gB = grp('bms');
+    var mBms = mat('bms', 0x2bb3a3, 0x2e6b3a, 0.2, 0.6), mSense = mat('bms', 0x7fe0d4, 0xd8dde2, 0.2, 0.6);
+    box(0.5, 1.4, 4, -9.5, 2.95, 0, mBms, 'bms', gB);
+    box(0.2, 0.4, 0.4, -9.5, 3.8, 0, mBms, 'bms', gB);
+    rowsZ.forEach(function (z) { rod(0.05, V(-9.3, 3.66, z + 0.55), V(CX0 + 15 * 1.1, 3.66, z + 0.55), mSense, 'bms', gB); });
+
+    // 7. Inverter and HV cable
+    var gI = grp('inverter');
+    var mInv = mat('inverter', 0xe3a53a, 0xa3a8ad, 0.6, 0.4), mHV = mat('inverter', 0xff7a1a, 0xff7a1a, 0.1, 0.6);
+    box(2.8, 1.0, 3.4, WX, 7.5, -0.6, mInv, 'inverter', gI);
+    rod(0.28, V(10.2, 3.3, -0.4), V(10.8, 6.8, -0.4), mHV, 'inverter', gI);
+    rod(0.28, V(10.8, 6.8, -0.4), V(11.2, 7.3, -0.4), mHV, 'inverter', gI);
+    rod(0.28, V(10.2, 3.3, 0.4), V(10.8, 6.8, 0.4), mHV, 'inverter', gI);
+    rod(0.28, V(10.8, 6.8, 0.4), V(11.2, 7.3, 0.4), mHV, 'inverter', gI);
+    [-0.6, 0, 0.6].forEach(function (dx) { rod(0.12, V(WX + dx, 7.0, -1.6), V(WX + dx, 6.2, -1.6), mHV, 'inverter', gI); });
+
+    // 8. Motor, gear, axles
+    var gM = grp('motor');
+    var mStat = mat('motor', 0xc0503a, 0x8a9097, 0.6, 0.4, 0.45), mRot = mat('motor', 0xf0846f, 0x6a7077, 0.6, 0.4), mGear = mat('gear', 0x9aa3ad, 0x6a7077, 0.6, 0.4), mGbox = mat('gear', 0xd8dde2, 0xa0a5aa, 0.5, 0.45, 0.35);
+    var MY = 5.3, MZ = -1.6;
+    cylZ(1.6, 3.2, WX, MY, MZ, mStat, 'motor', gM, 32);
+    var rotor = new THREE.Group(); rotor.position.set(WX, MY, MZ); gM.add(rotor);
+    cylZ(1.05, 3.0, 0, 0, 0, mRot, 'motor', rotor, 24);
+    box(0.3, 2.3, 3.05, 0, 0, 0, mGear, 'motor', rotor);
+    box(2.6, 4.0, 1.0, WX, 4.3, 0.6, mGbox, 'gear', gM);
+    var gSmall = new THREE.Group(); gSmall.position.set(WX, MY, 0.6); gM.add(gSmall);
+    cylZ(0.55, 0.6, 0, 0, 0, mGear, 'gear', gSmall, 12); box(0.2, 1.3, 0.62, 0, 0, 0, mRot, 'gear', gSmall);
+    var gBig = new THREE.Group(); gBig.position.set(WX, WR, 0.6); gM.add(gBig);
+    cylZ(1.45, 0.6, 0, 0, 0, mGear, 'gear', gBig, 30); box(0.25, 3.0, 0.62, 0, 0, 0, mRot, 'gear', gBig);
+    rod(0.25, V(WX, WR, 0.6), V(WX, WR, -6.7), mGear, 'gear', gM);
+    rod(0.25, V(WX, WR, 0.6), V(WX, WR, 6.7), mGear, 'gear', gM);
+
+    // 9. Charge port and onboard charger
+    var gP = grp('charge');
+    var mChg = mat('charge', 0xd8dde2, 0x9aa3ad, 0.5, 0.45), mPort = mat('charge', 0x3a3d42, 0x2a2c30, 0.2, 0.6);
+    box(1.6, 0.8, 2.2, 9.0, 4.6, -3.6, mChg, 'charge', gP);
+    cylZ(0.55, 0.6, 15.0, 6.4, -6.0, mPort, 'charge', gP, 20);
+    rod(0.15, V(15.0, 6.4, -5.6), V(9.6, 4.9, -3.6), mHV, 'charge', gP);
+    rod(0.15, V(9.0, 4.2, -3.6), V(8.0, 3.7, -3.6), mHV, 'charge', gP);
+
+    // Energy dots: battery -> inverter -> motor
+    var PATH = [V(10.2, 3.3, 0), V(10.8, 6.8, 0), V(WX, 7.5, -0.6), V(WX, 6.4, -1.6), V(WX, MY, MZ)];
+    var segLen = [], tot = 0;
+    for (i = 0; i < PATH.length - 1; i++) { var L = PATH[i].distanceTo(PATH[i + 1]); segLen.push(L); tot += L; }
+    function along(f) {
+      var d = f * tot;
+      for (var s = 0; s < segLen.length; s++) { if (d <= segLen[s]) return PATH[s].clone().lerp(PATH[s + 1], d / segLen[s]); d -= segLen[s]; }
+      return PATH[PATH.length - 1].clone();
+    }
+    var dotMat = new THREE.MeshBasicMaterial({ color: 0xffd24a }), dots = [], dotG = new THREE.Group(); world.add(dotG);
+    for (i = 0; i < 7; i++) { var dm = new THREE.Mesh(new THREE.SphereGeometry(0.32, 12, 8), dotMat); dotG.add(dm); dots.push(dm); }
+
+    var ORDER = ['frame', 'cells', 'wiring', 'cooling', 'case', 'bms', 'inverter', 'motor', 'charge'];
+    var real = false, lidE = 0.6, wheelA = 0, flowT = 0;
+
+    function applyStep() {
+      ORDER.forEach(function (k, idx) { PARTS[k].forEach(function (gp) { gp.visible = idx < step; }); });
+      dotG.visible = step >= 8;
+      selected = null; clearGlow(); showCaption();
+    }
+    function setColours() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.color.setHex(real ? m.userData.real : m.userData.col); }); }); }
+    function clearGlow() { Object.keys(MATS).forEach(function (k) { MATS[k].forEach(function (m) { m.emissive.setHex(0); }); }); }
+    function place(dt) {
+      if (running) { wheelA -= (regen ? 0.8 : 1.2) * dt; flowT += dt * 0.35; }
+      wheels.forEach(function (w) { w.rotation.z = wheelA; });
+      gBig.rotation.z = wheelA; gSmall.rotation.z = -wheelA * 1.45 / 0.55; rotor.rotation.z = gSmall.rotation.z;
+      dots.forEach(function (d, k) {
+        var f = (flowT + k / dots.length) % 1; if (regen) f = 1 - f;
+        d.position.copy(along(f));
+      });
+      dotMat.color.setHex(regen ? 0x5fc08a : 0xffd24a);
+      lid.position.y = 3.95 + lidE * 6;
+    }
+    var FOC = [V(0, 0, 0), V(0, -0.5, 0), V(0, -0.5, 0), V(0, -0.5, 0), V(0, -0.5, 0), V(-2, -0.5, 0), V(9, 2, -0.5), V(9, 1.5, -0.5), V(2, 0.5, 0)];
+    var ZM = [1, 0.75, 0.75, 0.8, 0.85, 0.8, 0.66, 0.66, 1];
+    function aimCamera(k) {
+      FOCUS.lerp(FOC[step - 1], k); camZoom += (ZM[step - 1] - camZoom) * k;
+      var fw = FOCUS.clone().applyAxisAngle(UP, pivot.rotation.y).add(TARGET);
+      camera.position.copy(fw).add(CAMOFF.clone().applyAxisAngle(UP, 0).multiplyScalar(camF * camZoom)); camera.lookAt(fw);
+    }
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(480, Math.max(320, w * 0.9)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      camF = camera.aspect < 1.2 ? 1.3 : 0.95;
+      camera.updateProjectionMatrix(); aimCamera(1);
+    }
+    window.addEventListener('resize', size); size();
+
+    var cvs = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    cvs.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === cvs) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleChain(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = cvs.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(world.children, true).filter(function (h) { return visibleChain(h.object) && h.object.userData.key; });
+      var solid = hits.filter(function (h) { return !(h.object.material && h.object.material.transparent); });
+      var hit = solid[0] || hits[0];
+      clearGlow();
+      if (!hit) { selected = null; showCaption(); return; }
+      selected = hit.object.userData.key;
+      if (MATS[selected]) MATS[selected].forEach(function (m) { m.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(); } });
+    var realBtn = $('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(); });
+    var lidIn = $('lid');
+    lidIn.addEventListener('input', function () { $('lidVal').textContent = lidIn.value; lidE = +lidIn.value / 100; });
+
+    var visible = true, last = 0;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      var dt = Math.min(0.1, (t - last) / 1000); last = t;
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.3;
+      place(dt); aimCamera(Math.min(1, dt * 3));
+      renderer.render(scene, camera);
+    }
+    setColours(); applyStep(); place(0);
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    $('stage').innerHTML = '<div class="fail">The 3D car floor could not load on this device. Use the steps below: each one describes the next part.</div>';
+    ['lid', 'realBtn', 'runBtn'].forEach(function (id) { $(id).disabled = true; });
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+
+  // ---------- Chapter 3: cell ----------
+  var NI = 20, ionsG = $('ions'), ions = [];
+  var AX = [50, 72, 94, 116], KX = [244, 266, 288, 310], IY = [66, 96, 126, 156, 186];
+  for (i = 0; i < NI; i++) {
+    var g = el('g', { class: 'ion' }, ionsG);
+    el('circle', { r: 7, fill: 'var(--accent)', stroke: 'var(--surface)', 'stroke-width': 1.5 }, g);
+    el('text', { y: 4, 'text-anchor': 'middle', 'font-size': 10, 'font-weight': 700, fill: '#1C1F23', 'font-family': 'var(--font-body)' }, g).textContent = '+';
+    ions.push(g);
+  }
+  var socIn = $('soc'), soc = 80, cMode = 'drive', cRun = !reduced;
+  var VC = [[0, 3.0], [10, 3.45], [20, 3.55], [50, 3.7], [80, 3.95], [100, 4.2]];
+  function cellV(s) { for (var k = 1; k < VC.length; k++) if (s <= VC[k][0]) { var a = VC[k - 1], b = VC[k]; return a[1] + (b[1] - a[1]) * (s - a[0]) / (b[0] - a[0]); } return 4.2; }
+  function updCell() {
+    var nA = Math.round(soc / 100 * NI);
+    ions.forEach(function (g, k) {
+      var x, y;
+      if (k < nA) { x = AX[k % 4]; y = IY[Math.floor(k / 4)]; }
+      else { var m = NI - 1 - k; x = KX[3 - (m % 4)]; y = IY[4 - Math.floor(m / 4)]; }
+      g.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+    });
+    socIn.value = Math.round(soc); $('socVal').textContent = Math.round(soc);
+    var v = cellV(soc);
+    $('cV').textContent = v.toFixed(2); $('pV').textContent = fmt(v * 96);
+    $('cKwh').textContent = (BATT * soc / 100).toFixed(1); $('cKm').textContent = fmt(BATT * soc / 100 * KM_KWH);
+    var wf = $('wireFlow');
+    wf.classList.toggle('rev', cMode === 'charge');
+    wf.classList.toggle('still', !cRun || (cMode === 'drive' && soc <= 0) || (cMode === 'charge' && soc >= 100));
+    var st = $('cStatus');
+    if (!cRun) { st.className = 'status ok'; st.textContent = 'Paused. Drag the charge level to move the ions yourself.'; }
+    else if (cMode === 'drive' && soc <= 0) { st.className = 'status bad'; st.textContent = 'Empty. All the ions are in the metal oxide. Real cars stop you well before this, to protect the cells.'; }
+    else if (cMode === 'charge' && soc >= 100) { st.className = 'status ok'; st.textContent = 'Full. All the ions are back in the graphite, ready to drive.'; }
+    else if (cMode === 'drive') { st.className = 'status ok'; st.textContent = 'Driving: ions swim left to right. Electrons go round the wire and turn the motor. Voltage falls as the cell empties.'; }
+    else { st.className = 'status ok'; st.textContent = 'Charging: the charger pushes electrons back to the graphite, and the ions follow them home.' + (soc > 80 ? ' Near full, it gets harder to park them, so charging slows.' : ''); }
+  }
+  socIn.addEventListener('input', function () { soc = +socIn.value; updCell(); });
+  function setCMode(m) {
+    if (m === 'pause') { cRun = false; } else { cMode = m; cRun = true; }
+    $('cDrive').setAttribute('aria-pressed', cRun && cMode === 'drive' ? 'true' : 'false');
+    $('cCharge').setAttribute('aria-pressed', cRun && cMode === 'charge' ? 'true' : 'false');
+    $('cPause').setAttribute('aria-pressed', cRun ? 'false' : 'true');
+    updCell();
+  }
+  $('cDrive').addEventListener('click', function () { setCMode('drive'); });
+  $('cCharge').addEventListener('click', function () { setCMode('charge'); });
+  $('cPause').addEventListener('click', function () { setCMode('pause'); });
+  setCMode(reduced ? 'pause' : 'drive');
+  var cellVis = true;
+  if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { cellVis = en[0].isIntersecting; }).observe(ionsG.ownerSVGElement);
+  setInterval(function () {
+    if (!cRun || !cellVis) return;
+    if (cMode === 'drive' && soc > 0) { soc = Math.max(0, soc - 1); updCell(); }
+    else if (cMode === 'charge' && soc < 100) { soc = Math.min(100, soc + (soc > 80 ? 0.34 : 1)); updCell(); }
+  }, 350);
+
+  // ---------- Chapter 4: twist chart ----------
+  var TX0 = 40, TX1 = 340, TY0 = 190, TY1 = 20, RMAX = 12000, TMAX = 240;
+  function tx(r) { return TX0 + r / RMAX * (TX1 - TX0); }
+  function ty(t) { return TY0 - t / TMAX * (TY0 - TY1); }
+  function tqE(r) { var w = r * 2 * Math.PI / 60; return w > 0 ? Math.min(215, 106000 / w) : 215; }
+  function tqP(r) { if (r < 800 || r > 6200) return 0; var x = (r - 4200) / 4800; return Math.max(0, 113 * (1 - x * x)); }
+  var ax = $('tqAxes');
+  el('line', { x1: TX0, y1: TY0, x2: TX1, y2: TY0, stroke: 'var(--muted)', 'stroke-width': 1.5 }, ax);
+  el('line', { x1: TX0, y1: TY0, x2: TX0, y2: TY1, stroke: 'var(--muted)', 'stroke-width': 1.5 }, ax);
+  [0, 4000, 8000, 12000].forEach(function (r) { el('text', { x: tx(r), y: TY0 + 15, 'text-anchor': 'middle', class: 'plotlab' }, ax).textContent = r / 1000 + 'k'; });
+  [0, 100, 200].forEach(function (t) { el('text', { x: TX0 - 6, y: ty(t) + 4, 'text-anchor': 'end', class: 'plotlab' }, ax).textContent = t; });
+  el('text', { x: 190, y: 222, 'text-anchor': 'middle', class: 'plotlab' }, ax).textContent = 'rpm';
+  el('text', { x: 10, y: 14, class: 'plotlab' }, ax).textContent = 'twist (Nm)';
+  var dE = '', dP = '';
+  for (var r = 0; r <= RMAX; r += 100) { dE += (r ? 'L' : 'M') + tx(r).toFixed(1) + ',' + ty(tqE(r)).toFixed(1); }
+  for (r = 800; r <= 6200; r += 100) { dP += (r === 800 ? 'M' : 'L') + tx(r).toFixed(1) + ',' + ty(tqP(r)).toFixed(1); }
+  $('tqE').setAttribute('d', dE); $('tqP').setAttribute('d', dP);
+  var trpm = $('trpm');
+  function updTq() {
+    var rr = +trpm.value, e = tqE(rr), p = tqP(rr);
+    $('trpmVal').textContent = fmt(rr);
+    $('tqLine').setAttribute('x1', tx(rr)); $('tqLine').setAttribute('x2', tx(rr));
+    $('tqDotE').setAttribute('cx', tx(rr)); $('tqDotE').setAttribute('cy', ty(e));
+    $('tqDotP').setAttribute('cx', tx(rr)); $('tqDotP').setAttribute('cy', ty(p));
+    $('tqDotP').style.opacity = p > 0 ? 1 : 0.25;
+    $('tE').textContent = fmt(e); $('tP').textContent = fmt(p);
+    $('tKw').textContent = fmt(e * rr * 2 * Math.PI / 60 / 1000);
+    $('tNote').textContent = rr < 800 ? 'At ' + fmt(rr) + ' rpm the engine cannot even run. The motor already gives its full 215 Nm. This is why EVs feel so quick off a signal.' :
+      rr <= 4700 ? 'The motor gives about ' + (e / Math.max(1, p)).toFixed(1) + ' times the twist of the engine here. Power = twist × speed, so motor power climbs as it spins faster.' :
+      rr <= 6200 ? 'Above about 4,700 rpm the motor reaches its 106 kW limit. Twist now falls, but power stays at the top.' :
+      'The engine has hit its limit and needs a higher gear. The motor keeps going, still at full power. One gear covers everything from 0 to top speed.';
+  }
+  trpm.addEventListener('input', updTq); updTq();
+
+  var rk = $('rkmh');
+  function updRegen() {
+    var v = +rk.value / 3.6, ke = 0.5 * 1700 * v * v / 3600, back = ke * 0.6;
+    $('rkmhVal').textContent = rk.value;
+    $('rKe').textContent = fmt(ke); $('rBack').textContent = fmt(back);
+    $('rM').textContent = fmt(back / (1000 / KM_KWH) * 1000);
+  }
+  rk.addEventListener('input', updRegen); updRegen();
+
+  // ---------- Chapter 5: charging ----------
+  var CH = {
+    plug: { kw: 2.6, eff: 1, price: HOME, name: 'home plug' },
+    wall: { kw: 6.1, eff: 1, price: HOME, name: 'wall box' },
+    dc: { kw: 47, eff: 1, price: DCPRICE, name: 'fast charger', taper: 12 }
+  };
+  var chK = 'wall', cFrom = $('cFrom'), cTo = $('cTo');
+  function hm(h) { var t = Math.round(h * 60), H = Math.floor(t / 60), M = t % 60; return (H ? H + ' h ' : '') + M + ' min'; }
+  function updCharge(src) {
+    var f = +cFrom.value, t = +cTo.value;
+    if (t <= f) { if (src === cTo) { f = Math.max(0, t - 5); cFrom.value = f; } else { t = Math.min(100, f + 5); cTo.value = t; } }
+    $('cFromVal').textContent = f; $('cToVal').textContent = t;
+    var c = CH[chK], kwh = BATT * (t - f) / 100, hrs;
+    if (c.taper) { var lo = BATT * Math.max(0, Math.min(t, 80) - f) / 100, hi = BATT * Math.max(0, t - Math.max(f, 80)) / 100; hrs = lo / c.kw + hi / c.taper; }
+    else hrs = kwh / c.kw;
+    var km = kwh * KM_KWH, cost = kwh * 1.1 * c.price;
+    $('chT').textContent = hm(hrs); $('chKm').textContent = fmt(km); $('chRs').textContent = fmt(cost);
+    $('chPet').textContent = fmt(km / KMPL * PETROL);
+    $('bOld').setAttribute('width', Math.max(0, f / 100 * 292));
+    $('bNew').setAttribute('x', 24 + f / 100 * 292); $('bNew').setAttribute('width', (t - f) / 100 * 292);
+    $('bLab').textContent = 'adding ' + (t - f) + '% = ' + kwh.toFixed(1) + ' kWh';
+    $('chNote').textContent = chK === 'plug' ? 'A normal 15 A socket is a thin tap: about 2.6 kW. Fine overnight if you drive under 50 km a day.' :
+      chK === 'wall' ? 'The wall box is the usual home choice. Plug in at night, and wake up with most of a full battery.' :
+      (t > 80 ? 'Fast, but look: the last ' + (t - Math.max(f, 80)) + '% takes ' + hm(BATT * (t - Math.max(f, 80)) / 100 / 12) + '. On trips, most drivers stop at 80% and move on.' : 'About ' + hm(hrs) + ': a tea break on the highway. It costs more per unit than home charging, but still far less than petrol.');
+  }
+  press('#chargers', 'data-k', function (b) { chK = b.getAttribute('data-k'); updCharge(); });
+  cFrom.addEventListener('input', function () { updCharge(cFrom); });
+  cTo.addEventListener('input', function () { updCharge(cTo); });
+  updCharge();
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tagEl = ans.querySelector('.mark') || document.createElement('span');
+        tagEl.className = 'mark ' + (ok ? 'right' : 'wrong'); tagEl.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tagEl, ans.firstChild);
+      });
+    });
+  });
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl6-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl6-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = $('explainBox');
+  box.value = store.get('dl6-explain') || '';
+  box.addEventListener('input', function () { store.set('dl6-explain', box.value); });
+})();
+</script>
+</body>
+</html>
