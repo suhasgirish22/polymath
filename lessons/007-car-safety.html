@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Day 7: Car safety</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Layout idea: a guided story in one column. Each chapter asks a question, lets you play with something, then explains. */
+  --bg: #F3F4F1;
+  --surface: #FFFFFF;
+  --ink: #1C1F23;
+  --muted: #5B636C;
+  --line: #DADDD8;
+  --accent: #C98400;
+  --accent-soft: #FFF1D1;
+  --water: #2D6E92;
+  --rubber: #2A2D31;
+  --steel: #8C97A3;
+  --good: #2E7D4F;
+  --warn: #B8432F;
+  --stage: #E4E7E3;
+  --font-display: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", Roboto, Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+    --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+    --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111316; --surface: #1A1D22; --ink: #ECEEF0; --muted: #9EA6AF; --line: #2C3138;
+  --accent: #F0B23A; --accent-soft: #3A2E14; --water: #6CB2D8;
+  --rubber: #0B0C0E; --steel: #A9B3BE; --good: #5FC08A; --warn: #F0846F; --stage: #22262C;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 1.0625rem; line-height: 1.65; }
+#progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--accent); z-index: 10; }
+main { max-width: 720px; margin: 0 auto; padding: 28px 18px 64px; display: grid; gap: 22px; }
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: 2.2rem; font-weight: 800; }
+h2 { font-size: 1.6rem; font-weight: 800; }
+h3 { font-size: 1.2rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.stack { display: grid; gap: 12px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
+.chip.day { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 600; }
+.lead { font-size: 1.2rem; color: var(--muted); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; display: grid; gap: 14px; }
+.num { font-family: var(--font-mono); color: var(--accent); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.04em; }
+.say { font-size: 1.15rem; }
+.fig { overflow-x: auto; }
+.fig svg { display: block; width: 100%; height: auto; max-width: 640px; margin: 0 auto; }
+button { font: inherit; font-size: 0.95rem; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); padding: 9px 13px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button[aria-pressed="true"], button.primary { background: var(--accent); border-color: var(--accent); color: #1C1F23; font-weight: 700; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.note { background: var(--accent-soft); border-radius: 10px; padding: 12px 14px; }
+.small { font-size: 0.9rem; color: var(--muted); }
+.reveal { border-radius: 10px; padding: 12px 14px; background: var(--bg); }
+.reveal[hidden] { display: none; }
+.right { color: var(--good); font-weight: 700; }
+.wrong { color: var(--warn); font-weight: 700; }
+.guess { display: grid; gap: 8px; }
+.guess button { text-align: left; }
+
+/* 3D stage */
+.stage { position: relative; background: radial-gradient(circle at 50% 40%, var(--surface), var(--stage)); border-radius: 12px; overflow: hidden; touch-action: pan-y; min-height: 260px; }
+.stage canvas { display: block; width: 100%; cursor: grab; }
+.stage .hint { position: absolute; left: 10px; bottom: 8px; font-size: 0.8rem; color: var(--muted); pointer-events: none; }
+.stage .fail { padding: 30px 16px; text-align: center; color: var(--muted); }
+.stepbar { display: flex; gap: 4px; }
+.stepbar i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); }
+.stepbar i.on { background: var(--accent); }
+.cap { background: var(--bg); border-radius: 10px; padding: 14px; display: grid; gap: 6px; min-height: 8.5em; }
+.cap .t { font-family: var(--font-display); font-weight: 800; font-size: 1.2rem; }
+.cap .w { color: var(--warn); }
+.ctrl { display: grid; gap: 4px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.tile { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.tile .big { font-family: var(--font-display); font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.status { border-radius: 10px; padding: 12px 14px; font-weight: 700; }
+.status.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+.status.bad { background: color-mix(in srgb, var(--warn) 15%, transparent); color: var(--warn); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.tf { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.tf:last-child { border-bottom: 0; }
+.tf .q { font-weight: 700; }
+
+.check { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.check label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.check input { width: 20px; height: 20px; margin-top: 4px; accent-color: var(--accent); flex: none; }
+details { background: var(--bg); border-radius: 10px; padding: 12px 14px; }
+summary { cursor: pointer; font-weight: 700; }
+details > *:not(summary) { margin-top: 10px; }
+textarea { width: 100%; min-height: 140px; font: inherit; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+.video { display: grid; gap: 10px; text-decoration: none; background: var(--rubber); color: #E9ECEF; border-radius: 12px; padding: 18px; }
+.vwrap { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; background: var(--rubber); }
+.vwrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video .play { width: 52px; height: 52px; border-radius: 50%; background: var(--accent); display: grid; place-items: center; flex: none; }
+table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--font-display); font-weight: 600; }
+.tablewrap { overflow-x: auto; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+nav.pager a { color: var(--ink); }
+nav.pager { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 0.95rem; }
+/* Day 7 extras */
+.explain { background: var(--bg); border-radius: 10px; padding: 14px; min-height: 5.5em; }
+.seg { transition: width .5s ease, x .5s ease; }
+.plotlab { font-family: var(--font-body); font-size: 11px; fill: var(--muted); }
+.hot { color: var(--warn); font-weight: 700; }
+.opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.opts button { text-align: left; }
+.toggles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.toggles button { text-align: left; }
+.stars { font-size: 1.6rem; letter-spacing: 2px; color: var(--accent); font-family: var(--font-display); }
+.stars .off { color: var(--line); }
+.exam .q { font-weight: 700; }
+.exam .row button { font-size: 0.85rem; padding: 6px 10px; }
+.score { font-family: var(--font-display); font-weight: 800; font-size: 1.3rem; }
+@media (prefers-reduced-motion: reduce) { .seg { transition: none; } }
+</style>
+</head>
+<body>
+<div id="progress" aria-hidden="true"></div>
+<main>
+
+<header class="stack">
+  <div class="meta">
+    <span class="chip day">Day 7 of 365</span>
+    <span class="chip">Week 1: Cars</span>
+    <span class="chip">About 15 min</span>
+    <span class="chip">Weekly exam today</span>
+  </div>
+  <a href="../" class="small">&larr; All lessons</a>
+  <h1>Why is a car that crumples safer?</h1>
+  <p class="lead">Today you will crash a car in slow motion, race an airbag against a blink, brake with and without ABS, and learn to read a crash test star rating. Then you take your first weekly exam.</p>
+</header>
+
+<!-- PUZZLE -->
+<section class="card">
+  <span class="num">START WITH A PUZZLE</span>
+  <p class="say">Two cars hit a wall at 64 km/h. Car A is an old, very stiff car. Its front only gets a small dent. Car B is a new car. Its front folds up like a paper fan, about 60 cm shorter.</p>
+  <p class="say">Uncle says: "See? Old cars were made of real steel. New cars are like tin."</p>
+  <p class="say"><b>Which car would you rather sit in?</b></p>
+  <p class="small">Guess first. Even a wrong guess helps you remember the answer.</p>
+  <div class="guess" id="guess">
+    <button type="button" data-a="0">Car A, the stiff one. Less damage means more safety.</button>
+    <button type="button" data-a="1">Car B, the one that folded up.</button>
+    <button type="button" data-a="0">No difference. The speed was the same.</button>
+  </div>
+  <div class="reveal" id="guessOut" hidden></div>
+</section>
+
+<!-- CHAPTER 1 -->
+<section class="card">
+  <span class="num">CHAPTER 1</span>
+  <h2>It is not the speed that hurts. It is the sudden stop.</h2>
+  <p>Jump off a wall onto a hard floor with straight legs. Ouch. Now jump again and bend your knees. Same height. Same speed. Much less pain. Why?</p>
+  <p>Bending your knees makes you stop over a longer distance. A longer stop means a gentler stop. Your body feels less force.</p>
+  <p>A crash works the same way. At 64 km/h, your body has the same energy as falling from a <b>5-floor building</b>. (64 km/h = 17.8 m/s. Height = 17.8 &times; 17.8 &divide; (2 &times; 9.8) = 16 m.) You cannot remove that energy. You can only make the stop longer and softer.</p>
+  <p>Three things stretch your stop. Turn them on and off and watch the force on a 70 kg person:</p>
+  <label for="cs" class="ctrl">
+    <span><b>Crash speed:</b> <span id="csVal" class="mono">64</span> km/h</span>
+    <input id="cs" type="range" min="20" max="100" step="2" value="64">
+  </label>
+  <div class="toggles" id="safeT">
+    <button type="button" data-k="crumple" aria-pressed="true">Crumple zone: ON</button>
+    <button type="button" data-k="belt" aria-pressed="true">Seatbelt: ON</button>
+    <button type="button" data-k="bag" aria-pressed="true">Airbag: ON</button>
+  </div>
+  <div class="fig">
+    <svg viewBox="0 0 360 120" role="img" aria-labelledby="sdTitle">
+      <title id="sdTitle">A bar showing how far your body travels while it stops. Each colour is one safety part that adds distance.</title>
+      <text x="10" y="18" font-family="var(--font-display)" font-size="12" font-weight="600" fill="var(--muted)">HOW FAR YOUR BODY TRAVELS WHILE STOPPING</text>
+      <rect x="10" y="30" width="340" height="34" rx="6" fill="var(--bg)" stroke="var(--line)"/>
+      <rect id="sdCr" class="seg" x="10" y="30" width="0" height="34" fill="var(--steel)"/>
+      <rect id="sdBe" class="seg" x="10" y="30" width="0" height="34" fill="var(--accent)"/>
+      <rect id="sdBa" class="seg" x="10" y="30" width="0" height="34" fill="var(--water)"/>
+      <text x="10" y="84" class="plotlab">0 cm</text>
+      <text x="350" y="84" text-anchor="end" class="plotlab">100 cm</text>
+      <rect x="10" y="96" width="12" height="12" fill="var(--steel)"/><text x="26" y="106" class="plotlab">car front folds</text>
+      <rect x="120" y="96" width="12" height="12" fill="var(--accent)"/><text x="136" y="106" class="plotlab">belt stretches</text>
+      <rect x="230" y="96" width="12" height="12" fill="var(--water)"/><text x="246" y="106" class="plotlab">airbag squashes</text>
+    </svg>
+  </div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Stopping distance</div><div class="big"><span id="cD">100</span> cm</div></div>
+    <div class="tile"><div class="small">Slowing force (g)</div><div class="big"><span id="cG">16</span> g</div></div>
+    <div class="tile"><div class="small">Push on your body</div><div class="big"><span id="cKg">1,130</span> kg</div></div>
+    <div class="tile"><div class="small">Like falling from</div><div class="big"><span id="cFl">5</span> floors</div></div>
+  </div>
+  <p id="cStatus" class="status ok"></p>
+  <p class="small">Average force = speed&sup2; &divide; (2 &times; stopping distance). "1 g" is your normal weight. 16 g means you feel 16 times heavier for a moment. Rough numbers: real crashes have short peaks above the average.</p>
+  <p>So the answer to the puzzle: Car B. Its folding front <b>is</b> the bent knees. The stiff car stops in a few centimetres, and your body takes the hit instead of the metal. Metal is cheap. You are not.</p>
+  <details>
+    <summary>Quick check: turn the seatbelt OFF. Why does the crumple zone stop helping?</summary>
+    <p>Without a belt, you are not tied to the car. The car slows down gently, but you keep flying at full speed. Then you hit the steering wheel or glass, which has already stopped. Your stop is only a few centimetres long. The belt is what lets you "ride down" with the car.</p>
+  </details>
+</section>
+
+<!-- CHAPTER 2: 3D -->
+<section class="card">
+  <span class="num">CHAPTER 2</span>
+  <h2>Build a safe car, part by part</h2>
+  <p>Think of a cricket helmet. The soft foam crushes. The hard shell keeps its shape. A car is built the same way: <b>soft outside, hard inside</b>.</p>
+  <p>Press <b>Next</b> to add one part. <b>Drag sideways</b> to turn the car. The front is on the right. When all parts are in, use the <b>crash slider</b> to hit a wall in slow motion.</p>
+  <div class="stage" id="stage">
+    <span class="hint" id="stageHint">Drag sideways to turn. Tap a part to name it.</span>
+  </div>
+  <div class="stepbar" id="stepbar" aria-hidden="true"></div>
+  <div class="cap" id="cap" aria-live="polite"></div>
+  <div class="row">
+    <button type="button" id="prevBtn">Back</button>
+    <button type="button" id="nextBtn" class="primary">Next part</button>
+    <button type="button" id="realBtn" aria-pressed="false">Real colours</button>
+  </div>
+  <label for="crashT" class="ctrl">
+    <span><b>Crash time:</b> <span id="crashTVal" class="mono">0</span> milliseconds after hitting the wall</span>
+    <input id="crashT" type="range" min="0" max="120" step="1" value="0">
+  </label>
+  <div class="row">
+    <button type="button" id="playBtn" class="primary">Play crash (40 times slower)</button>
+    <button type="button" id="resetBtn">Reset</button>
+  </div>
+  <p id="crashEv" class="note" aria-live="polite"></p>
+  <p class="small">The colours are only for learning. Simplified: the real car has doors, glass, an engine and body panels. Sizes are close to a 4-metre Indian hatchback or compact SUV. The driver sits on the right.</p>
+</section>
+
+<!-- CHAPTER 3 -->
+<section class="card">
+  <span class="num">CHAPTER 3</span>
+  <h2>The airbag race: faster than a blink</h2>
+  <p>A blink takes about 100 to 150 milliseconds. (1 millisecond = one thousandth of a second.) The whole crash is over in about the same time. So a car cannot wait for you. Everything must already be decided.</p>
+  <p>Slide through the crash. This is the same slider as the 3D car above.</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 150" role="img" aria-labelledby="tlTitle">
+      <title id="tlTitle">A timeline from 0 to 120 milliseconds, with marks for sensor, belt, airbag full, body meets airbag, car stopped, and a blink for comparison.</title>
+      <line x1="20" y1="70" x2="340" y2="70" stroke="var(--line)" stroke-width="8" stroke-linecap="round"/>
+      <line id="tlFill" x1="20" y1="70" x2="20" y2="70" stroke="var(--accent)" stroke-width="8" stroke-linecap="round"/>
+      <g id="tlMarks"></g>
+      <rect x="20" y="118" width="320" height="10" rx="5" fill="var(--water)" opacity="0.25"/>
+      <rect x="287" y="118" width="53" height="10" rx="5" fill="var(--water)" opacity="0.6"/>
+      <text x="20" y="144" class="plotlab">one blink (100 to 150 ms) ends around here, or later</text>
+      <circle id="tlDot" cx="20" cy="70" r="9" fill="var(--ink)"/>
+    </svg>
+  </div>
+  <label for="tlT" class="ctrl">
+    <span><b>Time:</b> <span id="tlTVal" class="mono">0</span> ms</span>
+    <input id="tlT" type="range" min="0" max="120" step="1" value="0">
+  </label>
+  <p id="tlEv" class="explain" aria-live="polite"></p>
+  <h3>The jobs, and why each exists</h3>
+  <ul class="plain">
+    <li><b>Crash sensors and airbag brain:</b> measure how fast the car is slowing down, about 1,000 times a second. <span class="hot">Without them:</span> the airbag would fire at a pothole, or not at all.</li>
+    <li><b>Seatbelt:</b> ties you to the car, across the strong bones of your hips and chest. <span class="hot">Without it:</span> you fly forward at full speed, as you saw in Chapter 1.</li>
+    <li><b>Pretensioner:</b> a small charge pulls the belt tight in the first 15 ms, removing slack from a loose jacket. <span class="hot">Without it:</span> you move forward several centimetres before the belt even starts to hold.</li>
+    <li><b>Load limiter:</b> lets the belt give out a little once the force gets very high. <span class="hot">Without it:</span> the belt itself could break ribs.</li>
+    <li><b>Airbag:</b> a nylon bag filled by a fast chemical reaction that makes harmless gas. It opens faster than 200 km/h, then lets gas out through holes so you sink in softly. <span class="hot">Without it:</span> your head swings forward and hits the steering wheel.</li>
+  </ul>
+  <p class="note">Your airbag says <b>SRS</b> on it. That means "Supplementary Restraint System". Supplementary means "extra". The airbag is built to work <b>with</b> a belt. An unbelted person can hit the bag while it is still opening, at more than 200 km/h. That is why the car beeps until you buckle up.</p>
+  <h3>The back seat is not safe without a belt</h3>
+  <p>A 70 kg passenger in the back, with no belt, at 50 km/h. They fly forward and hit the front seat. They stop in about 10 cm. 13.9 &times; 13.9 &divide; (2 &times; 0.1) = 965 m/s&sup2;, about <b>98 g</b>. 70 kg &times; 98 = about <b>6,900 kg</b> of force. That is heavier than an adult elephant, pressing on the person in front of them.</p>
+  <p>In 2022, businessman Cyrus Mistry died in a crash on a highway near Mumbai. He was in the back seat without a belt. After this, India moved to make rear seat belt reminders compulsory in new cars.</p>
+</section>
+
+<!-- CHAPTER 4 -->
+<section class="card">
+  <span class="num">CHAPTER 4</span>
+  <h2>ABS: brake hard and still steer</h2>
+  <p>The safest crash is the one that never happens. So now we move from surviving a crash to <b>avoiding</b> one.</p>
+  <p>Remember Day 1? A tyre grips best when it is rolling. Once it stops turning and slides, grip drops. And on Day 2, you learned that hard braking can lock the wheels.</p>
+  <p>A <b>locked</b> wheel has one more problem. A sliding tyre cannot steer. You turn the steering wheel, and the car keeps going straight, like a slab of soap on a wet floor.</p>
+  <p><b>ABS</b> (Anti-lock Braking System) watches each wheel with a speed sensor. When a wheel is about to lock, it lets the brake go for a split second, then squeezes again. It does this about 15 times a second. You feel it as a buzzing in the pedal.</p>
+  <p>Try it. An auto-rickshaw stops suddenly 30 m ahead. You slam the brake at once.</p>
+  <div class="fig">
+    <svg viewBox="0 0 360 170" role="img" aria-labelledby="absTitle">
+      <title id="absTitle">Top view of a two-lane road. A car brakes towards a stopped auto-rickshaw. With ABS it can steer into the other lane. With locked wheels it slides straight.</title>
+      <rect x="0" y="30" width="360" height="110" fill="var(--muted)" opacity="0.22"/>
+      <line class="lanes" x1="0" y1="85" x2="360" y2="85" stroke="var(--surface)" stroke-width="3" stroke-dasharray="18 14"/>
+      <line x1="0" y1="32" x2="360" y2="32" stroke="var(--surface)" stroke-width="2"/>
+      <line x1="0" y1="138" x2="360" y2="138" stroke="var(--surface)" stroke-width="2"/>
+      <g id="autoR">
+        <rect x="0" y="-11" width="24" height="22" rx="5" fill="var(--accent)"/>
+        <rect x="4" y="-8" width="10" height="16" rx="3" fill="var(--rubber)" opacity="0.6"/>
+      </g>
+      <path id="skid" fill="none" stroke="var(--rubber)" stroke-width="3" opacity="0.55" d=""/>
+      <path id="skid2" fill="none" stroke="var(--rubber)" stroke-width="3" opacity="0.55" d=""/>
+      <g id="carTop">
+        <rect x="-16" y="-9" width="32" height="18" rx="5" fill="var(--water)"/>
+        <rect x="2" y="-7" width="8" height="14" rx="2" fill="var(--surface)" opacity="0.7"/>
+      </g>
+      <text x="10" y="20" class="plotlab" id="absLab">0 m</text>
+      <text x="350" y="160" text-anchor="end" class="plotlab">car moving right</text>
+    </svg>
+  </div>
+  <div class="toggles">
+    <button type="button" id="absBtn" aria-pressed="true">ABS: ON</button>
+    <button type="button" id="wetBtn" aria-pressed="false">Road: dry</button>
+  </div>
+  <label for="as" class="ctrl">
+    <span><b>Your speed:</b> <span id="asVal" class="mono">60</span> km/h</span>
+    <input id="as" type="range" min="30" max="100" step="5" value="60">
+  </label>
+  <div class="row"><button type="button" id="goBtn" class="primary">Brake now</button></div>
+  <div class="readouts">
+    <div class="tile"><div class="small">Grip used</div><div class="big" id="aMu">0.90</div></div>
+    <div class="tile"><div class="small">Stopping distance</div><div class="big"><span id="aD">16</span> m</div></div>
+    <div class="tile"><div class="small">Can you steer?</div><div class="big" id="aSt">Yes</div></div>
+  </div>
+  <p id="aStatus" class="status ok"></p>
+  <p class="small">Distance = speed&sup2; &divide; (2 &times; grip &times; 9.8), the Day 2 formula. Grip numbers are typical for good tyres: dry 0.9 rolling, 0.7 sliding; wet 0.55 rolling, 0.4 sliding. We ignore your reaction time here (Day 2 added about 1 second).</p>
+  <p><b>The big win is steering, not distance.</b> On a good road, ABS often stops a little shorter. On loose gravel or sand, it can even stop a little longer. But you keep control, so you can steer around the problem.</p>
+  <p class="note"><b>How to brake in an emergency with ABS:</b> press the pedal hard, keep it pressed, and steer. Do not pump it. Do not be scared of the buzzing. ABS is fitted on every new car sold in India since 2019.</p>
+  <p><b>ESC</b> (Electronic Stability Control) is ABS's bigger brother. It uses the same brake unit. If the car starts to spin in a fast turn, it brakes one single wheel to pull the car straight. <span class="hot">Without it:</span> a sudden swerve at highway speed can spin the car.</p>
+</section>
+
+<!-- CHAPTER 5 -->
+<section class="card">
+  <span class="num">CHAPTER 5</span>
+  <h2>Crash tests: how a car earns its stars</h2>
+  <p>You cannot crash-test a car before buying it. So someone does it for you. In India, that is <b>Bharat NCAP</b> (New Car Assessment Programme), run by the government since late 2023. Before that, Indian cars were tested by Global NCAP, a charity.</p>
+  <p>Testers buy cars, put crash dummies full of sensors inside, and crash them. Three main tests:</p>
+  <ul class="plain">
+    <li><b>Front offset crash, 64 km/h:</b> the driver's side of the front hits a soft aluminium block. Only part of the front takes the hit, so one crash rail must do most of the work. This is the most common serious crash on a road.</li>
+    <li><b>Side crash, 50 km/h:</b> a heavy trolley hits the driver's door. There is almost no crumple zone in a door, so the cage and side airbags matter most.</li>
+    <li><b>Side pole crash, 29 km/h:</b> the car slides sideways into a pole, like a tree. Only for cars that already score 3 stars or more.</li>
+  </ul>
+  <p>The car gets two scores. <b>Adult</b> occupant protection is out of 32. <b>Child</b> occupant protection is out of 49, using child dummies in child seats. Each turns into stars. Try it:</p>
+  <label for="aop" class="ctrl">
+    <span><b>Adult score:</b> <span id="aopVal" class="mono">28</span> / 32</span>
+    <input id="aop" type="range" min="0" max="32" step="0.5" value="28">
+  </label>
+  <div class="row"><span class="stars" id="aopStars"></span></div>
+  <label for="cop" class="ctrl">
+    <span><b>Child score:</b> <span id="copVal" class="mono">40</span> / 49</span>
+    <input id="cop" type="range" min="0" max="49" step="0.5" value="40">
+  </label>
+  <div class="row"><span class="stars" id="copStars"></span></div>
+  <p id="starNote" class="note"></p>
+  <p>A score is not only about the dummy. To get 3 stars or more, the car must also have <b>ESC</b> and seatbelt reminders. A car with great metal but missing these cannot get a high rating.</p>
+  <p class="small">From October 2027, the government plans "Bharat NCAP 2.0". It will also score how well a car protects people walking outside, how well it avoids crashes (like automatic emergency braking), and how easy it is to rescue people after a crash. So a 5-star car of today may score lower under the new rules.</p>
+</section>
+
+<!-- TRUE OR FALSE -->
+<section class="card">
+  <span class="num">TRUE OR FALSE?</span>
+  <h2>Three things people believe</h2>
+  <div id="tfList">
+    <div class="tf">
+      <p class="q">"My car has 6 airbags, so I do not need to wear a seatbelt."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. The belt does most of the work. Airbags are "supplementary", built to work with a belt. Without one, you can hit the bag while it is still opening, which can injure you badly.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"Old cars were heavier and stiffer, so they were safer."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. A stiff front stops in a few centimetres, so the force goes into your body. Good cars have a soft front that crumples and a hard cabin that does not. Less damage to the car can mean more damage to you.</p>
+    </div>
+    <div class="tf">
+      <p class="q">"With ABS, you should pump the brake pedal in an emergency."</p>
+      <div class="row"><button type="button" data-v="t">True</button><button type="button" data-v="f">False</button></div>
+      <p class="reveal" hidden data-ans="f">False. Pumping was the old trick for cars without ABS. ABS pumps for you, about 15 times a second, much faster than your foot. Press hard, hold, and steer.</p>
+    </div>
+  </div>
+</section>
+
+<!-- DO THIS -->
+<section class="card">
+  <span class="num">DO THIS WEEK</span>
+  <h2>Four checks on your own car</h2>
+  <ul class="check" id="checklist">
+    <li><label><input type="checkbox" id="c1"><span>Start the car and watch the dashboard. The airbag light (a person with a ball in front) should come on, then go off in a few seconds. If it stays on, the airbags may not work. Get it checked.</span></label></li>
+    <li><label><input type="checkbox" id="c2"><span>Sit in the back seat. Find both rear belts. Pull each one sharply. It should lock. Then make it a rule: everyone buckles up, front and back.</span></label></li>
+    <li><label><input type="checkbox" id="c3"><span>Search your car's name on bncap.in or globalncap.org. Note its adult and child stars, and the year it was tested.</span></label></li>
+    <li><label><input type="checkbox" id="c4"><span>Set your headrest so its top is level with the top of your head. Too low, and your neck bends back over it in a rear crash.</span></label></li>
+  </ul>
+  <p class="small">Ticks are saved in this browser only.</p>
+</section>
+
+<!-- QUIZ -->
+<section class="card">
+  <span class="num">RECALL QUIZ</span>
+  <h2>No scrolling up. Answer in your head first.</h2>
+  <details><summary>1. Why is a crumple zone good, even though it wrecks the car?</summary><p>It makes the stop longer. A longer stop means a smaller force on your body. The crushed metal soaks up the energy instead of you, while the hard cabin keeps its shape.</p></details>
+  <details><summary>2. Why does an airbag need a seatbelt?</summary><p>The belt holds you in the right place and slows you with the car. The airbag only cushions your head and chest at the end. Without a belt, you can hit the bag while it is still opening, very fast.</p></details>
+  <details><summary>3. What is the main gift of ABS?</summary><p>You can still steer while braking hard. It stops the wheels from locking, by releasing and squeezing the brakes about 15 times a second.</p></details>
+  <p class="small"><b>Spaced review from yesterday (Day 6, EVs and batteries):</b></p>
+  <details><summary>4. Inside a battery cell, what does the separator let through, and what does it block?</summary><p>It lets lithium ions pass through its tiny holes. It blocks electrons, so they must go the long way through the wire and motor. If it fails, the cell short-circuits and gets very hot.</p></details>
+  <details><summary>5. Why does a fast charger slow down after about 80%?</summary><p>The graphite has few free spots left, like a nearly full bus. Pushing hard then makes heat and damages the cell, so the battery's brain (BMS) slows the charging.</p></details>
+</section>
+
+<!-- WEEKLY EXAM -->
+<section class="card exam">
+  <span class="num">WEEKLY EXAM: WEEK 1, CARS</span>
+  <h2>Seven questions, one from each day</h2>
+  <p>Say your answer out loud first. Then open it, and be honest: tap "Got it" or "Missed it". Your score is saved in this browser.</p>
+  <div id="examList">
+    <details data-q="e1"><summary>1. (Tyres) A tyre has too little air. Which part of the tread wears out fastest, and why?</summary><p>The two edges. With less air, the tyre squashes more, the middle lifts a little, and the edges carry the weight.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e2"><summary>2. (Brakes) You go from 40 to 80 km/h. How much longer is your braking distance?</summary><p>4 times longer. Braking distance grows with speed times speed: 2 &times; 2 = 4.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e3"><summary>3. (Suspension) Your car keeps bouncing after a speed breaker. Which part is worn out?</summary><p>The shock absorber (damper). The spring holds the car up. The damper stops the bouncing by pushing oil through small holes.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e4"><summary>4. (Engine) Name the four strokes. Which one pushes the car?</summary><p>Suck (intake), squeeze (compression), bang (power), blow (exhaust). Only the bang pushes the piston.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e5"><summary>5. (Gearbox) Why do you start in 1st gear and not 5th?</summary><p>1st gear multiplies the engine's twist many times, so it can get a heavy, still car moving. 5th gear gives speed but very little twist, so the engine would stall.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e6"><summary>6. (EVs) How does an EV get energy back when it slows down?</summary><p>Regenerative braking. The wheels turn the motor like a generator, and it charges the battery. A petrol car's brakes turn that energy into heat instead.</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+    <details data-q="e7"><summary>7. (Safety) Join three days: why does a locked wheel make a crash more likely?</summary><p>A sliding tyre grips less than a rolling one (Day 1), so you stop later (Day 2). And a sliding tyre cannot steer, so you cannot go around the danger. ABS prevents this (Day 7).</p><div class="row"><button type="button" data-r="1">Got it</button><button type="button" data-r="0">Missed it</button></div></details>
+  </div>
+  <p class="score" id="examScore" aria-live="polite">Score: 0 / 7</p>
+  <p class="small" id="examNote">Open each question to mark it.</p>
+</section>
+
+<!-- TASK -->
+<section class="card">
+  <span class="num">TODAY'S TASK</span>
+  <h2>Explain it to a friend in 5 sentences</h2>
+  <p>Without looking back. Cover: why a longer stop is safer, soft front and hard cabin, why the belt matters more than the airbag, what ABS does, and what crash test stars measure.</p>
+  <label for="explainBox" class="small">Your 5 sentences (saved in this browser only)</label>
+  <textarea id="explainBox" placeholder="1. In a crash, the sudden stop is what hurts..."></textarea>
+</section>
+
+<!-- LINKS AND CHEAT SHEET -->
+<section class="card">
+  <span class="num">HOW IT CONNECTS</span>
+  <ul class="plain">
+    <li><b>This whole week:</b> tyres grip (Day 1), brakes turn speed into heat (Day 2), and safety decides what happens when those are not enough. The heavy battery in an EV floor (Day 6) makes it hard to roll over, but its case must also survive a crash.</li>
+    <li><b>Physics:</b> force = mass &times; how fast you slow down. Newton's second law is why a longer stop is a softer stop. You will meet it again in Week 5.</li>
+    <li><b>History:</b> Volvo engineer Nils Bohlin designed the modern 3-point seatbelt in 1959. Volvo gave the design free to every car maker.</li>
+    <li><b>Tomorrow, a new week: Money.</b> Day 8 asks how money is created. You bought a car with money. But who made that money, and from what?</li>
+  </ul>
+  <details>
+    <summary>Cheat sheet (for later)</summary>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">Bharat NCAP star bands (from its rules, 2023)</caption>
+        <thead><tr><th>Stars</th><th>Adult (out of 32)</th><th>Child (out of 49)</th></tr></thead>
+        <tbody>
+          <tr><td>5</td><td class="mono">27 to 32</td><td class="mono">41 to 49</td></tr>
+          <tr><td>4</td><td class="mono">22 to 26</td><td class="mono">35 to 40</td></tr>
+          <tr><td>3</td><td class="mono">16 to 21</td><td class="mono">27 to 34</td></tr>
+          <tr><td>2</td><td class="mono">10 to 15</td><td class="mono">18 to 26</td></tr>
+          <tr><td>1</td><td class="mono">4 to 9</td><td class="mono">9 to 17</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <caption class="small" style="text-align:left;padding-bottom:6px">A front crash in slow motion (typical, rough)</caption>
+        <thead><tr><th>Time</th><th>What happens</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">0 ms</td><td>Bumper hits</td></tr>
+          <tr><td class="mono">about 15 ms</td><td>Airbag brain decides. Belt pretensioner fires.</td></tr>
+          <tr><td class="mono">about 30 ms</td><td>Front airbag full</td></tr>
+          <tr><td class="mono">50 to 70 ms</td><td>Your body sinks into the belt and bag</td></tr>
+          <tr><td class="mono">about 70 to 100 ms</td><td>Car stopped. Airbag lets gas out.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <ul class="plain">
+      <li><b>Passive safety:</b> protects you in a crash (cage, crumple zone, belts, airbags). <b>Active safety:</b> helps avoid the crash (ABS, ESC, good tyres, good brakes).</li>
+      <li><b>ADAS:</b> driver help systems using cameras and radar. <b>AEB</b> (automatic emergency braking) brakes for you if you do not react.</li>
+      <li><b>ISOFIX:</b> two metal loops between the rear seat cushion and backrest. A child seat clicks onto them. Much safer than holding a child on your lap.</li>
+      <li><b>Child in front:</b> never put a rear-facing child seat in front of an active airbag.</li>
+      <li><b>Hold the steering at "9 and 3"</b> (like clock hands), not across the top. An opening airbag can throw your arms into your face.</li>
+      <li><b>Sit at least about 25 cm</b> from the steering wheel centre, so the bag can open before it reaches you.</li>
+      <li><b>Indian rules:</b> ABS on all new cars since 2019. Two front airbags in all new cars since 2022. Rear seat belt reminders moving in from 2025. A 6-airbag rule was announced in 2022 but later postponed; many cars now offer 6 anyway.</li>
+    </ul>
+  </details>
+</section>
+
+<nav class="pager" aria-label="Lesson navigation">
+  <a href="006-evs-and-batteries.html">&larr; Day 6: EVs and batteries</a>
+  <a href="../">All lessons</a>
+  <span>Next: Day 8, How money is created (tomorrow)</span>
+</nav>
+
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function () {
+  var store = {
+    get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  };
+  var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function $(id) { return document.getElementById(id); }
+  function fmt(n) { return Math.round(n).toLocaleString('en-IN'); }
+  function clamp(x) { return Math.max(0, Math.min(1, x)); }
+  var SVGNS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent) { var e = document.createElementNS(SVGNS, tag); for (var k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+
+  // Progress bar
+  var bar = $('progress');
+  function onScroll() {
+    var h = document.documentElement, max = h.scrollHeight - h.clientHeight;
+    bar.style.width = (max > 0 ? (h.scrollTop / max) * 100 : 0) + '%';
+  }
+  window.addEventListener('scroll', onScroll, { passive: true }); onScroll();
+
+  // Puzzle
+  var guessOut = $('guessOut');
+  document.querySelectorAll('#guess button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#guess button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      var ok = b.getAttribute('data-a') === '1';
+      guessOut.hidden = false;
+      guessOut.innerHTML = (ok ? '<span class="right">Correct.</span> ' : '<span class="wrong">Good guess, but no.</span> ') +
+        'Choose <b>Car B</b>. Its folding front makes the stop longer and gentler for your body. The stiff car stops almost instantly, so you take the hit instead of the metal. Chapter 1 shows the numbers.';
+    });
+  });
+
+  // ---------- Chapter 1: stopping distance ----------
+  var safe = { crumple: true, belt: true, bag: true };
+  var NAMES = { crumple: 'Crumple zone', belt: 'Seatbelt', bag: 'Airbag' };
+  document.querySelectorAll('#safeT button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-k'); safe[k] = !safe[k];
+      b.setAttribute('aria-pressed', safe[k] ? 'true' : 'false');
+      b.textContent = NAMES[k] + ': ' + (safe[k] ? 'ON' : 'OFF');
+      updateStop();
+    });
+  });
+  var cs = $('cs');
+  function updateStop() {
+    var kmh = +cs.value, v = kmh / 3.6;
+    var cr = 0, be = 0, ba = 0;
+    if (safe.belt) { cr = safe.crumple ? 0.6 : 0.1; be = 0.3; ba = safe.bag ? 0.1 : 0; }
+    else { cr = 0; be = 0; ba = safe.bag ? 0.15 : 0.05; }
+    var d = cr + be + ba;
+    var g = v * v / (2 * d * 9.81);
+    $('csVal').textContent = kmh;
+    $('cD').textContent = Math.round(d * 100);
+    $('cG').textContent = Math.round(g);
+    $('cKg').textContent = fmt(70 * g);
+    var floors = v * v / (2 * 9.81) / 3.2;
+    $('cFl').textContent = floors < 1 ? 'under 1' : (floors < 10 ? floors.toFixed(1) : Math.round(floors));
+    var px = function (m) { return m / 1.0 * 340; };
+    var x0 = 10;
+    var r1 = $('sdCr'), r2 = $('sdBe'), r3 = $('sdBa');
+    var fillB = safe.belt ? 'var(--water)' : 'var(--warn)';
+    r1.setAttribute('x', x0); r1.setAttribute('width', px(cr));
+    r2.setAttribute('x', x0 + px(cr)); r2.setAttribute('width', px(be));
+    r3.setAttribute('x', x0 + px(cr + be)); r3.setAttribute('width', px(ba)); r3.setAttribute('fill', fillB);
+    var st = $('cStatus');
+    var msg;
+    if (!safe.belt) {
+      st.className = 'status bad';
+      msg = 'No belt: you keep flying until you hit the inside of the car, and stop in only ' + Math.round(d * 100) + ' cm. ';
+      msg += g > 60 ? 'At ' + Math.round(g) + ' g, injuries are likely to be very serious or fatal.' : 'Even at this low speed, that is a hard hit.';
+    } else if (g > 40) {
+      st.className = 'status bad'; msg = 'Too much force. At ' + Math.round(g) + ' g, serious injury is likely. ' + (safe.crumple ? 'This speed is beyond what the car can soften.' : 'A stiff front is the problem: turn the crumple zone back on.');
+    } else if (g > 25) {
+      st.className = 'status bad'; msg = 'Risky. ' + Math.round(g) + ' g on average. You may survive, but injuries are likely. Every extra centimetre of stop helps.';
+    } else {
+      st.className = 'status ok'; msg = 'Survivable for most people. Average ' + Math.round(g) + ' g. The car, belt and airbag share the job of stopping you slowly.';
+    }
+    st.textContent = msg;
+  }
+  cs.addEventListener('input', updateStop); updateStop();
+
+  // ---------- Shared crash time (3D + timeline) ----------
+  var EVENTS = [
+    [0, 'Bumper touches the wall. The car is still doing 64 km/h. You do not know it yet.'],
+    [5, 'Crash sensors at the front and in the middle feel a huge, sudden slow-down.'],
+    [15, 'The airbag brain decides: this is a real crash. It fires the airbags and the belt pretensioner. The belt is pulled tight.'],
+    [30, 'Front airbag is full. The crash rails are folding like a paper fan. The cabin keeps its shape.'],
+    [50, 'Your body moves forward and sinks into the belt and the airbag. They slow you down over about 40 cm.'],
+    [75, 'The car has stopped. The front is about 60 cm shorter. The doors can still open.'],
+    [90, 'The airbag lets gas out through small holes, so you sink in softly and do not bounce back hard.'],
+    [115, 'All over. Faster than one blink. Every decision was made before you could react.']
+  ];
+  var crashT = 0;
+  var listeners = [];
+  function setCrashT(t, from) {
+    crashT = t;
+    $('crashT').value = t; $('crashTVal').textContent = Math.round(t);
+    $('tlT').value = t; $('tlTVal').textContent = Math.round(t);
+    var txt = EVENTS[0][1];
+    EVENTS.forEach(function (e) { if (t >= e[0]) txt = e[1]; });
+    $('crashEv').textContent = Math.round(t) + ' ms: ' + txt;
+    $('tlEv').innerHTML = '<b>' + Math.round(t) + ' ms.</b> ' + txt;
+    var x = 20 + t / 120 * 320;
+    $('tlDot').setAttribute('cx', x); $('tlFill').setAttribute('x2', x);
+    listeners.forEach(function (f) { f(t); });
+  }
+  // timeline marks
+  var marks = $('tlMarks');
+  [[15, 'fire', -1], [30, 'bag full', 1], [50, 'body in bag', -1], [75, 'car stopped', 1], [100, 'bag empties', -1]].forEach(function (m) {
+    var x = 20 + m[0] / 120 * 320;
+    el('line', { x1: x, y1: 58, x2: x, y2: 82, stroke: 'var(--ink)', 'stroke-width': 2 }, marks);
+    var tx = el('text', { x: x, y: m[2] < 0 ? 48 : 100, 'text-anchor': 'middle', 'class': 'plotlab' }, marks);
+    tx.textContent = m[0] + ' ms ' + m[1];
+  });
+  var playing = false, playStart = 0, playFrom = 0;
+  function playTick(now) {
+    if (!playing) return;
+    var t = playFrom + (now - playStart) / 40;
+    if (t >= 120) { t = 120; playing = false; $('playBtn').textContent = 'Play crash again'; }
+    setCrashT(t);
+    if (playing) requestAnimationFrame(playTick);
+  }
+  $('playBtn').addEventListener('click', function () {
+    if (playing) { playing = false; $('playBtn').textContent = 'Play crash (40 times slower)'; return; }
+    if (reduced) { setCrashT(120); return; }
+    playFrom = crashT >= 120 ? 0 : crashT; playStart = performance.now(); playing = true;
+    $('playBtn').textContent = 'Pause';
+    requestAnimationFrame(playTick);
+  });
+  $('resetBtn').addEventListener('click', function () { playing = false; $('playBtn').textContent = 'Play crash (40 times slower)'; setCrashT(0); });
+  $('crashT').addEventListener('input', function () { playing = false; $('playBtn').textContent = 'Play crash (40 times slower)'; setCrashT(+$('crashT').value); });
+  $('tlT').addEventListener('input', function () { playing = false; $('playBtn').textContent = 'Play crash (40 times slower)'; setCrashT(+$('tlT').value); });
+
+  // ---------- 3D safe car ----------
+  var STEPS = [
+    { key: 'floor', t: 'Floor and wheels', d: 'We start with the floor pan and four wheels. The car is about 4 m long and 1.75 m wide. The front is on the right.', w: '' },
+    { key: 'cage', t: 'Safety cage: the hard shell', d: 'A ring of very strong, hardened steel around the people: pillars, roof rails, sills under the doors, and a wall in front of your feet.', w: 'Without it: in a crash the roof and doors would fold into you.' },
+    { key: 'rails', t: 'Crash rails: the crumple zone', d: 'Two steel rails in front of the cabin, made to fold up like an accordion. They turn the crash energy into bent metal and heat.', w: 'Without them: the car stops in a few centimetres, and your body takes the force (Chapter 1).' },
+    { key: 'bumper', t: 'Bumper beam', d: 'A strong bar across the front, behind the plastic bumper. It spreads a hit to both crash rails.', w: 'Without it: a narrow hit (a pole, or one corner) would miss the rails and push into the engine bay.' },
+    { key: 'seat', t: 'Seat and 3-point seatbelt', d: 'The belt crosses your hips and chest, the strongest bones you have. It ties you to the car so you slow down with it.', w: 'Without it: you keep flying at full speed and hit the inside of the car.' },
+    { key: 'airbag', t: 'Front airbag', d: 'Folded inside the steering wheel. In a crash it fills in about 30 ms, then lets gas out so your head sinks in softly.', w: 'Without it: your head swings down into the steering wheel.' },
+    { key: 'curtain', t: 'Curtain airbags', d: 'Long thin bags hidden above the doors. In a side crash or rollover they drop down like a curtain over the windows.', w: 'Without them: in a side crash your head can hit the pillar, the glass, or the other car.' },
+    { key: 'abs', t: 'ABS: sensors and brake unit', d: 'A toothed ring and sensor on every wheel measure its speed. The brake unit near the engine wall can release each brake 15 times a second.', w: 'Without it: hard braking locks the wheels, and a sliding car cannot steer (Chapter 4).' }
+  ];
+  var INFO = {
+    floor: 'Floor and wheels: the base of the car.',
+    cage: 'Safety cage: hardened steel ring that keeps its shape.',
+    rails: 'Crash rails: fold up to soak up the energy.',
+    bumper: 'Bumper beam: spreads the hit to both rails.',
+    seat: 'Seat and belt: ties you to the car.',
+    dummy: 'Crash dummy: you, the driver.',
+    airbag: 'Front airbag: cushions your head and chest.',
+    curtain: 'Curtain airbag: protects your head in side crashes.',
+    abs: 'ABS: stops the wheels from locking.',
+    wall: 'Crash test wall: what we drive into.'
+  };
+  var N = STEPS.length;
+  var step = location.hash === '#full' ? N : 1;
+  var stepbar = $('stepbar');
+  for (var i = 0; i < N; i++) stepbar.appendChild(document.createElement('i'));
+  var cap = $('cap');
+  var selected = null;
+  function showCaption() {
+    var s = STEPS[step - 1];
+    var html = '<span class="small">Part ' + step + ' of ' + N + '</span><span class="t">' + s.t + '</span><span>' + s.d + '</span>';
+    if (s.w) html += '<span class="w">' + s.w + '</span>';
+    if (step === N) html += '<span class="small">Done. Now press "Play crash", or move the crash slider slowly. Watch what folds and what does not.</span>';
+    if (selected) html = '<span class="small">You tapped</span><span class="t">' + INFO[selected].split(':')[0] + '</span><span>' + INFO[selected].split(': ')[1] + '</span><span class="small">Tap empty space to go back to the build.</span>';
+    cap.innerHTML = html;
+    stepbar.querySelectorAll('i').forEach(function (e, idx) { e.classList.toggle('on', idx < step); });
+    $('prevBtn').disabled = step <= 1;
+    $('nextBtn').disabled = step >= N;
+  }
+
+  function init3D() {
+    var stage = $('stage');
+    var renderer;
+    if (typeof THREE === 'undefined') return fail();
+    try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); } catch (e) { return fail(); }
+    if (!renderer.getContext()) return fail();
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    stage.insertBefore(renderer.domElement, stage.firstChild);
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+    var target = new THREE.Vector3(0.25, 0.7, 0);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 0.85));
+    var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(5, 8, 7); scene.add(key);
+    var fill = new THREE.DirectionalLight(0xffffff, 0.35); fill.position.set(-6, -2, 5); scene.add(fill);
+
+    var pivot = new THREE.Group(); scene.add(pivot);
+    var baseY = 0.3; pivot.rotation.y = baseY;
+    var V = THREE.Vector3;
+
+    // Units: metres. x = front (+), y = up, z = right side of car (+), driver on the right.
+    var PARTS = {
+      floor: { col: 0x8c97a3, real: 0x6b7178, metal: 0.4, rough: 0.6 },
+      tyre: { col: 0x2a2d31, real: 0x1d1f22, metal: 0, rough: 0.95, k: 'floor' },
+      cage: { col: 0xc8452f, real: 0xb8c0c9, metal: 0.6, rough: 0.4 },
+      rails: { col: 0xe3a53a, real: 0x9aa3ad, metal: 0.6, rough: 0.4 },
+      bumper: { col: 0x8a5cc2, real: 0x7d858e, metal: 0.6, rough: 0.4 },
+      seat: { col: 0x3d5a73, real: 0x2b2d31, metal: 0, rough: 0.9 },
+      belt: { col: 0x2e7d4f, real: 0x1c1f23, metal: 0, rough: 0.8, k: 'seat' },
+      dummy: { col: 0xf2c94c, real: 0xf2c94c, metal: 0, rough: 0.7 },
+      airbag: { col: 0x8fd0f2, real: 0xf1f1ee, metal: 0, rough: 0.9 },
+      curtain: { col: 0x6cb2d8, real: 0xf1f1ee, metal: 0, rough: 0.9, alpha: 0.85 },
+      abs: { col: 0x2e9e8f, real: 0x50565d, metal: 0.5, rough: 0.5 },
+      wall: { col: 0x9ea6af, real: 0x9ea6af, metal: 0, rough: 1, alpha: 0.45 }
+    };
+    var STEPOF = { floor: 1, tyre: 1, cage: 2, rails: 3, bumper: 4, seat: 5, belt: 5, dummy: 5, airbag: 6, curtain: 7, abs: 8 };
+    var groups = {};
+    Object.keys(PARTS).forEach(function (k) {
+      var p = PARTS[k];
+      p.mat = new THREE.MeshStandardMaterial({ color: p.col, metalness: p.metal, roughness: p.rough, side: THREE.DoubleSide, transparent: !!p.alpha, opacity: p.alpha || 1 });
+      groups[k] = new THREE.Group(); pivot.add(groups[k]);
+    });
+    function tag(m, k) { m.userData.key = PARTS[k].k || k; return m; }
+    function box(k, w, h, d, x, y, z, parent) {
+      var m = tag(new THREE.Mesh(new THREE.BoxGeometry(w, h, d), PARTS[k].mat), k);
+      m.position.set(x, y, z); (parent || groups[k]).add(m); return m;
+    }
+    function tube(k, a, b, r) {
+      var dir = new V().subVectors(b, a), len = dir.length();
+      var m = tag(new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 12), PARTS[k].mat), k);
+      m.position.copy(a).add(b).multiplyScalar(0.5);
+      m.quaternion.setFromUnitVectors(new V(0, 1, 0), dir.normalize());
+      groups[k].add(m); return m;
+    }
+
+    // 1. Floor and wheels
+    box('floor', 3.3, 0.06, 1.5, -0.25, 0.36, 0);
+    [[1.25, 1], [1.25, -1], [-1.25, 1], [-1.25, -1]].forEach(function (w) {
+      var t = tag(new THREE.Mesh(new THREE.CylinderGeometry(0.31, 0.31, 0.2, 28), PARTS.tyre.mat), 'tyre');
+      t.rotation.x = Math.PI / 2; t.position.set(w[0], 0.31, w[1] * 0.76); groups.tyre.add(t);
+    });
+    // 2. Safety cage
+    [1, -1].forEach(function (s) {
+      var z = s * 0.78, zt = s * 0.66;
+      tube('cage', new V(-1.35, 0.42, z), new V(0.9, 0.42, z), 0.05);          // sill
+      tube('cage', new V(0.9, 0.42, z), new V(0.9, 0.9, z), 0.05);             // A base
+      tube('cage', new V(0.9, 0.9, z), new V(0.2, 1.45, zt), 0.045);           // A pillar
+      tube('cage', new V(-0.35, 0.42, z), new V(-0.38, 1.45, zt), 0.05);       // B pillar
+      tube('cage', new V(-1.35, 0.42, z), new V(-1.35, 0.9, z), 0.045);
+      tube('cage', new V(-1.35, 0.9, z), new V(-1.0, 1.45, zt), 0.045);        // C pillar
+      tube('cage', new V(0.2, 1.45, zt), new V(-1.0, 1.45, zt), 0.045);        // roof rail
+      tube('cage', new V(0.9, 0.9, z), new V(-1.35, 0.9, z), 0.03);            // door beam line
+    });
+    [0.2, -0.38, -1.0].forEach(function (x) { tube('cage', new V(x, 1.45, -0.66), new V(x, 1.45, 0.66), 0.04); });
+    tube('cage', new V(0.9, 0.9, -0.78), new V(0.9, 0.9, 0.78), 0.05);         // dash bar
+    box('cage', 0.04, 0.48, 1.5, 0.9, 0.66, 0);                                  // firewall
+    // 3. Crash rails (accordion segments in a scalable group)
+    var railG = new THREE.Group(); railG.position.set(0.92, 0.58, 0); groups.rails.add(railG);
+    var SEGS = 6, SEGL = 0.9 / SEGS, railSegs = [];
+    [0.48, -0.48].forEach(function (z) {
+      for (var j = 0; j < SEGS; j++) {
+        var m = box('rails', SEGL * 0.98, 0.14, 0.11, SEGL * (j + 0.5), 0, z, railG);
+        m.userData.j = j; m.userData.z = z; railSegs.push(m);
+      }
+    });
+    // 4. Bumper beam
+    var bumper = box('bumper', 0.1, 0.13, 1.55, 1.87, 0.58, 0);
+    // 5. Seat, belt, dummy (driver on right, +z)
+    var DZ = 0.36;
+    box('seat', 0.5, 0.12, 0.48, -0.15, 0.55, DZ);
+    var back = box('seat', 0.1, 0.62, 0.48, -0.42, 0.9, DZ); back.rotation.z = 0.18;
+    box('seat', 0.08, 0.18, 0.3, -0.5, 1.3, DZ);
+    var dummyG = new THREE.Group(); groups.dummy.add(dummyG);
+    var torso = box('dummy', 0.24, 0.55, 0.36, -0.28, 0.93, DZ, dummyG); torso.rotation.z = 0.18;
+    var head = tag(new THREE.Mesh(new THREE.SphereGeometry(0.11, 20, 14), PARTS.dummy.mat), 'dummy'); head.position.set(-0.33, 1.32, DZ); dummyG.add(head);
+    box('dummy', 0.45, 0.14, 0.34, 0.02, 0.68, DZ, dummyG);
+    var beltG = new THREE.Group(); dummyG.add(beltG);
+    var sash = box('belt', 0.03, 0.62, 0.05, -0.15, 0.95, DZ, beltG); sash.rotation.x = -0.75; sash.position.x = -0.14;
+    box('belt', 0.03, 0.05, 0.4, -0.12, 0.7, DZ, beltG);
+    // steering wheel (part of airbag step)
+    var wheel = tag(new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.02, 10, 32), PARTS.airbag.mat), 'airbag');
+    wheel.rotation.y = Math.PI / 2; wheel.rotation.x = 0; wheel.position.set(0.42, 1.0, DZ);
+    var wheelG = new THREE.Group(); groups.airbag.add(wheelG); wheelG.add(wheel);
+    wheel.rotation.set(0, Math.PI / 2, 0); wheelG.rotation.z = 0.0;
+    tube('airbag', new V(0.43, 1.0, DZ), new V(0.85, 0.8, DZ), 0.025);
+    var bag = tag(new THREE.Mesh(new THREE.SphereGeometry(1, 24, 16), PARTS.airbag.mat), 'airbag'); groups.airbag.add(bag);
+    // 7. Curtains
+    var curtains = [1, -1].map(function (s) { return box('curtain', 1.45, 1, 0.03, -0.4, 1.2, s * 0.66); });
+    // 8. ABS: toothed rings + unit + lines
+    [[1.25, 1], [1.25, -1], [-1.25, 1], [-1.25, -1]].forEach(function (w) {
+      var r = tag(new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.025, 8, 24), PARTS.abs.mat), 'abs');
+      r.position.set(w[0], 0.31, w[1] * 0.64); groups.abs.add(r);
+      tube('abs', new V(w[0], 0.31, w[1] * 0.6), new V(w[0] > 0 ? 0.8 : -1.1, 0.42, w[1] * 0.3), 0.012);
+      if (w[0] < 0) tube('abs', new V(-1.1, 0.42, w[1] * 0.3), new V(0.8, 0.42, w[1] * 0.3), 0.012);
+    });
+    box('abs', 0.16, 0.14, 0.2, 0.8, 0.98, -0.45);
+    // Wall
+    var wall = box('wall', 0.3, 1.1, 2.0, 2.08, 0.55, 0);
+
+    function setColours(real) { Object.keys(PARTS).forEach(function (k) { PARTS[k].mat.color.setHex(real ? PARTS[k].real : PARTS[k].col); }); }
+
+    // Crash pose
+    function pose(t) {
+      var c = 1 - Math.pow(1 - clamp(t / 75), 2);
+      var crush = 0.6 * c;
+      var L = 0.9 - crush;
+      railG.scale.x = L / 0.9;
+      railSegs.forEach(function (m) { m.rotation.y = (m.userData.j % 2 ? 1 : -1) * 0.9 * c; m.position.z = m.userData.z + (m.userData.j % 2 ? 1 : -1) * 0.03 * c; });
+      bumper.position.x = 1.87 - crush;
+      bumper.rotation.y = 0.04 * c;
+      wall.position.x = 1.92 + 0.15 - crush + 0.01;
+      wall.visible = t > 0 || step === N;
+      var sb = clamp((t - 15) / 15);
+      if (t > 80) sb *= 1 - 0.35 * clamp((t - 80) / 40);
+      var s = Math.max(0.1, sb);
+      bag.scale.set(0.04 + 0.16 * s, 0.05 + 0.25 * s, 0.05 + 0.25 * s);
+      bag.position.set(0.4 - 0.16 * s, 1.08, DZ);
+      var sc = clamp((t - 12) / 15);
+      curtains.forEach(function (m) { var h = 0.06 + 0.42 * sc; m.scale.y = h; m.position.y = 1.43 - h / 2; });
+      var fwd = 0.2 * Math.sin(Math.PI * clamp((t - 18) / 100));
+      dummyG.position.x = fwd * (t < 40 ? 0.5 : 1);
+      head.position.x = -0.33 + 0.12 * Math.sin(Math.PI * clamp((t - 30) / 90));
+      head.position.y = 1.32 - 0.04 * Math.sin(Math.PI * clamp((t - 30) / 90));
+    }
+    listeners.push(pose);
+
+    var fadeKeys = null, fadeStart = 0;
+    function applyStep(animate) {
+      Object.keys(PARTS).forEach(function (k) { if (STEPOF[k]) groups[k].visible = STEPOF[k] <= step; PARTS[k].mat.emissive.setHex(0); });
+      fadeKeys = null;
+      if (animate && !reduced) {
+        fadeKeys = Object.keys(STEPOF).filter(function (k) { return STEPOF[k] === step; }); fadeStart = performance.now();
+        fadeKeys.forEach(function (k) { PARTS[k].mat.transparent = true; PARTS[k].mat.opacity = 0; });
+      }
+      selected = null; showCaption(); pose(crashT);
+    }
+
+    function size() {
+      var w = stage.clientWidth, h = Math.round(Math.min(460, Math.max(280, w * 0.85)));
+      renderer.setSize(w, h); camera.aspect = w / h;
+      var narrow = w / h < 1.1;
+      camera.fov = narrow ? 42 : 34; camera.updateProjectionMatrix();
+      var dist = narrow ? 8.6 : 7.4;
+      camera.position.set(target.x + dist * 0.2, target.y + dist * 0.42, target.z + dist * 0.88);
+      camera.lookAt(target);
+    }
+    window.addEventListener('resize', size); size();
+
+    var elc = renderer.domElement, down = false, sx = 0, sRot = 0, moved = 0, touched = false;
+    elc.addEventListener('pointerdown', function (e) { down = true; sx = e.clientX; sRot = pivot.rotation.y; moved = 0; });
+    window.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var dx = e.clientX - sx; moved = Math.max(moved, Math.abs(dx));
+      if (moved > 4) { touched = true; pivot.rotation.y = sRot + dx * 0.01; }
+    });
+    window.addEventListener('pointerup', function (e) { if (!down) return; down = false; if (moved < 6 && e.target === elc) pick(e); });
+    window.addEventListener('pointercancel', function () { down = false; });
+    var ray = new THREE.Raycaster(), v2 = new THREE.Vector2();
+    function visibleUp(o) { while (o) { if (!o.visible) return false; o = o.parent; } return true; }
+    function pick(e) {
+      var r = elc.getBoundingClientRect();
+      v2.x = ((e.clientX - r.left) / r.width) * 2 - 1; v2.y = -((e.clientY - r.top) / r.height) * 2 + 1;
+      ray.setFromCamera(v2, camera);
+      var hits = ray.intersectObjects(pivot.children, true).filter(function (h) { return visibleUp(h.object); });
+      Object.keys(PARTS).forEach(function (k) { PARTS[k].mat.emissive.setHex(0); });
+      if (!hits.length) { selected = null; showCaption(); return; }
+      selected = hits[0].object.userData.key;
+      Object.keys(PARTS).forEach(function (k) { if ((PARTS[k].k || k) === selected) PARTS[k].mat.emissive.setHex(0x6a4500); });
+      showCaption();
+    }
+
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; applyStep(true); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; applyStep(false); } });
+    var real = false, realBtn = $('realBtn');
+    realBtn.addEventListener('click', function () { real = !real; realBtn.setAttribute('aria-pressed', real ? 'true' : 'false'); setColours(real); });
+    // Crash controls jump to the full car so the crash makes sense
+    function fullForCrash() { if (step < N) { step = N; applyStep(false); } }
+    $('crashT').addEventListener('input', fullForCrash);
+    $('playBtn').addEventListener('click', fullForCrash);
+
+    var visible = true;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (en) { visible = en[0].isIntersecting; }).observe(stage);
+    function loop(t) {
+      requestAnimationFrame(loop);
+      if (!visible) return;
+      if (!touched && !reduced) pivot.rotation.y = baseY + Math.sin(t / 2600) * 0.25;
+      if (fadeKeys) {
+        var k = Math.min(1, (t - fadeStart) / 700), glow = Math.sin(Math.min(1, (t - fadeStart) / 1400) * Math.PI);
+        fadeKeys.forEach(function (kk) { var p = PARTS[kk]; p.mat.opacity = k * (p.alpha || 1); p.mat.emissive.setRGB(0.45 * glow, 0.3 * glow, 0); });
+        if (t - fadeStart > 1400) {
+          fadeKeys.forEach(function (kk) { var p = PARTS[kk]; p.mat.opacity = p.alpha || 1; p.mat.transparent = !!p.alpha; p.mat.emissive.setHex(0); });
+          fadeKeys = null;
+        }
+      }
+      renderer.render(scene, camera);
+    }
+    applyStep(false);
+    requestAnimationFrame(loop);
+  }
+  function fail() {
+    var stage = $('stage');
+    stage.innerHTML = '<div class="fail">The 3D car could not load on this device. Use the steps below: each one describes the next part. The crash slider still tells the story.</div>';
+    $('realBtn').disabled = true;
+    $('nextBtn').addEventListener('click', function () { if (step < N) { step++; showCaption(); } });
+    $('prevBtn').addEventListener('click', function () { if (step > 1) { step--; showCaption(); } });
+    showCaption();
+  }
+  init3D();
+  setCrashT(0);
+
+  // ---------- Chapter 4: ABS ----------
+  var abs = true, wet = false, asIn = $('as');
+  var OBST = 30, X0 = 30, PXM = 8.2; // 30 m ahead; x = 30 + m * 8.2 (fits 36 m)
+  var carTop = $('carTop'), autoR = $('autoR');
+  autoR.setAttribute('transform', 'translate(' + (X0 + OBST * PXM) + ',111)');
+  function mu() { return wet ? (abs ? 0.55 : 0.4) : (abs ? 0.9 : 0.7); }
+  function dist() { var v = +asIn.value / 3.6; return v * v / (2 * mu() * 9.81); }
+  function placeCar(m, y, rot) { carTop.setAttribute('transform', 'translate(' + (X0 - 16 + Math.min(m, 37) * PXM) + ',' + y + ') rotate(' + rot + ')'); }
+  function plan() {
+    var d = dist();
+    var hit = d > OBST;
+    return { d: d, hit: hit, swerve: hit && abs };
+  }
+  function updateAbs() {
+    $('asVal').textContent = asIn.value;
+    var p = plan();
+    $('aMu').textContent = mu().toFixed(2);
+    $('aD').textContent = Math.round(p.d);
+    $('aSt').textContent = abs ? 'Yes' : 'No';
+    var st = $('aStatus');
+    if (!p.hit) { st.className = 'status ok'; st.textContent = 'You stop in ' + Math.round(p.d) + ' m, before the auto. ' + (abs ? 'And you could have steered if needed.' : 'Lucky: with locked wheels you could not have steered.'); }
+    else if (abs) { st.className = 'status ok'; st.textContent = 'You need ' + Math.round(p.d) + ' m, too far to stop. But your wheels keep rolling, so you steer into the free lane and miss it.'; }
+    else { st.className = 'status bad'; st.textContent = 'You need ' + Math.round(p.d) + ' m. The wheels lock, the car slides straight, and you hit the auto. Turning the steering does nothing.'; }
+    $('absLab').textContent = 'Auto is 30 m ahead. You need ' + Math.round(p.d) + ' m to stop.';
+    $('skid').setAttribute('d', ''); $('skid2').setAttribute('d', '');
+    placeCar(0, 111, 0);
+  }
+  var anim = null;
+  function run() {
+    var p = plan(), dur = reduced ? 1 : 2200, t0 = performance.now();
+    var stopAt = p.swerve ? Math.min(p.d, 37) : (p.hit ? OBST : p.d);
+    function frame(now) {
+      var k = clamp((now - t0) / dur), e = 1 - (1 - k) * (1 - k);
+      var m = stopAt * e, y = 111, rot = 0;
+      if (p.swerve) { var s = clamp((m - 6) / 16); y = 111 - 52 * (s * s * (3 - 2 * s)); rot = -30 * Math.sin(Math.PI * s); }
+      placeCar(m, y, rot);
+      if (!abs) {
+        var x1 = X0 - 26, x2 = X0 + m * PXM - 26;
+        $('skid').setAttribute('d', 'M' + x1 + ',105 L' + x2 + ',105'); $('skid2').setAttribute('d', 'M' + x1 + ',117 L' + x2 + ',117');
+      }
+      if (k < 1) anim = requestAnimationFrame(frame); else anim = null;
+    }
+    if (anim) cancelAnimationFrame(anim);
+    anim = requestAnimationFrame(frame);
+  }
+  $('absBtn').addEventListener('click', function () { abs = !abs; this.setAttribute('aria-pressed', abs ? 'true' : 'false'); this.textContent = 'ABS: ' + (abs ? 'ON' : 'OFF'); updateAbs(); });
+  $('wetBtn').addEventListener('click', function () { wet = !wet; this.setAttribute('aria-pressed', wet ? 'true' : 'false'); this.textContent = 'Road: ' + (wet ? 'wet (monsoon)' : 'dry'); updateAbs(); });
+  asIn.addEventListener('input', updateAbs);
+  $('goBtn').addEventListener('click', run);
+  updateAbs();
+
+  // ---------- Chapter 5: stars ----------
+  function starsFrom(v, bands) { for (var i = 0; i < bands.length; i++) if (v >= bands[i]) return 5 - i; return 0; }
+  var AOPB = [27, 22, 16, 10, 4], COPB = [41, 35, 27, 18, 9];
+  function starHtml(n) { var s = ''; for (var i = 0; i < 5; i++) s += i < n ? '&#9733;' : '<span class="off">&#9733;</span>'; return s; }
+  function updateStars() {
+    var a = +$('aop').value, c = +$('cop').value;
+    $('aopVal').textContent = a; $('copVal').textContent = c;
+    var sa = starsFrom(a, AOPB), sc = starsFrom(c, COPB);
+    $('aopStars').innerHTML = starHtml(sa) + ' <span class="small">adult</span>';
+    $('copStars').innerHTML = starHtml(sc) + ' <span class="small">child</span>';
+    var note = 'Adult: ' + sa + ' star' + (sa === 1 ? '' : 's') + '. Child: ' + sc + ' star' + (sc === 1 ? '' : 's') + '. ';
+    if (sa >= 5 && sc >= 5) note += 'Top marks on both. Many Indian SUVs and some hatchbacks now score this.';
+    else if (sa > sc) note += 'Good for adults, weaker for children. Often this means poor child seat fitting or missing ISOFIX. Look at both numbers before you buy.';
+    else if (sc > sa) note += 'Children are protected better than adults here. The adult score usually drops when the cage bends or the dummy\'s chest or knees hit hard parts.';
+    else note += 'Both the same. Look at the full report on bncap.in to see which body parts were at risk.';
+    $('starNote').textContent = note;
+  }
+  $('aop').addEventListener('input', updateStars); $('cop').addEventListener('input', updateStars); updateStars();
+
+  // True or false
+  document.querySelectorAll('#tfList .tf').forEach(function (tf) {
+    var ans = tf.querySelector('.reveal');
+    tf.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tf.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+        var ok = b.getAttribute('data-v') === ans.getAttribute('data-ans');
+        ans.hidden = false;
+        var tag = ans.querySelector('.mark') || document.createElement('span');
+        tag.className = 'mark ' + (ok ? 'right' : 'wrong'); tag.textContent = ok ? 'You got it. ' : 'Not quite. ';
+        ans.insertBefore(tag, ans.firstChild);
+      });
+    });
+  });
+
+  // Weekly exam
+  function examScore() {
+    var got = 0, done = 0;
+    document.querySelectorAll('#examList details').forEach(function (d) {
+      var v = store.get('dl7-' + d.getAttribute('data-q'));
+      d.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', b.getAttribute('data-r') === v ? 'true' : 'false'); });
+      if (v !== null && v !== undefined && v !== '') { done++; if (v === '1') got++; }
+    });
+    $('examScore').textContent = 'Score: ' + got + ' / 7';
+    $('examNote').textContent = done < 7 ? (7 - done) + ' still to mark.' :
+      (got >= 6 ? 'Excellent. Week 1 is solid in your head.' : got >= 4 ? 'Good. Reread the lesson for each one you missed, just its chapter titles and quiz.' : 'That is normal for a first exam. Open the lessons you missed and do their recall quiz again this weekend.');
+  }
+  document.querySelectorAll('#examList details').forEach(function (d) {
+    d.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () { store.set('dl7-' + d.getAttribute('data-q'), b.getAttribute('data-r')); examScore(); });
+    });
+  });
+  examScore();
+
+  // Saved checklist and task
+  document.querySelectorAll('#checklist input').forEach(function (c) {
+    c.checked = store.get('dl7-' + c.id) === '1';
+    c.addEventListener('change', function () { store.set('dl7-' + c.id, c.checked ? '1' : '0'); });
+  });
+  var box = $('explainBox');
+  box.value = store.get('dl7-explain') || '';
+  box.addEventListener('input', function () { store.set('dl7-explain', box.value); });
+})();
+</script>
+</body>
+</html>
